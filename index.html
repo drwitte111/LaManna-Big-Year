@@ -648,7 +648,10 @@
 <!-- MAP PAGE -->
 <div id="page-map" class="page">
   <nav>
-    <div class="nav-brand" onclick="showPage('home')"><span>🦅</span> Big Year</div>
+    <div class="nav-brand" onclick="showPage('home')">
+      <span>🦅</span> Big Year
+    </div>
+
     <div class="nav-links">
       <button class="nav-link" onclick="showPage('home')">Board</button>
       <button class="nav-link" onclick="showPage('birds')">My Birds</button>
@@ -658,24 +661,83 @@
       <button class="nav-link" onclick="showPage('countdown')">Countdown</button>
       <button class="nav-link" onclick="showPage('myprofile')">My Profile</button>
     </div>
+
     <div class="nav-right">
       <span class="nav-user" id="nav-username8"></span>
       <button class="btn-logout" onclick="handleLogout()">Sign out</button>
     </div>
   </nav>
+
   <div class="content">
+
     <div class="page-header">
-      <div class="page-title">Sighting Map</div>
-      <div class="page-subtitle">Where birds have been spotted</div>
+      <div class="page-title">Bird Sighting Map</div>
+      <div class="page-subtitle">
+        Explore every bird sighting from the family's Big Year.
+      </div>
     </div>
-    <div id="map-filter-row" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;"></div>
-    <div id="map-container" style="width:100%;height:520px;border-radius:6px;border:1px solid rgba(200,149,42,0.2);overflow:hidden;position:relative;">
-      <div id="map-el" style="width:100%;height:100%;"></div>
-      <div id="map-empty" class="empty-state" style="display:none;position:absolute;inset:0;background:rgba(26,46,26,0.9);align-items:center;justify-content:center;">No mapped sightings yet — log birds with a city location to see them here.</div>
+
+    <div id="map-filter-row"
+         style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;">
     </div>
-    <div style="margin-top:0.6rem;font-size:0.72rem;color:rgba(245,237,214,0.25);font-style:italic;">Only sightings logged with a city from the location autocomplete appear on the map.</div>
+
+    <div id="map-container"
+         style="position:relative;
+                width:100%;
+                height:600px;
+                border:1px solid rgba(200,149,42,.2);
+                border-radius:8px;
+                overflow:hidden;">
+
+      <!-- Leaflet map goes here -->
+      <div id="map-el"
+           style="width:100%;height:100%;">
+      </div>
+
+      <!-- Loading -->
+      <div id="map-loading"
+           style="
+             position:absolute;
+             inset:0;
+             display:flex;
+             align-items:center;
+             justify-content:center;
+             background:rgba(26,46,26,.75);
+             color:var(--gold);
+             font-size:1rem;
+             z-index:500;">
+        Loading map...
+      </div>
+
+      <!-- Empty -->
+      <div id="map-empty"
+           class="empty-state"
+           style="
+             display:none;
+             position:absolute;
+             inset:0;
+             align-items:center;
+             justify-content:center;
+             background:rgba(26,46,26,.92);
+             z-index:600;">
+        No bird sightings have coordinates yet.
+      </div>
+
+    </div>
+
+    <p style="
+        margin-top:.75rem;
+        font-size:.75rem;
+        color:rgba(245,237,214,.35);
+        font-style:italic;">
+      Click any marker to see the species, observer, date, and location.
+    </p>
+
   </div>
-  <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
+
+  <div class="site-footer">
+    LaManna Family Big Year · Powered by Firebase & OpenStreetMap
+  </div>
 </div>
 
 <!-- ADMIN PAGE -->
