@@ -595,8 +595,31 @@
   <div class="content">
     <div class="page-header">
       <div class="page-title">Admin Panel</div>
-      <div class="page-subtitle">Manage family accounts</div>
+      <div class="page-subtitle">Manage family accounts and Big Year settings</div>
     </div>
+
+    <div class="section-label">Big Year window</div>
+    <div class="admin-user-card" style="margin-bottom:1.5rem;">
+      <p class="settings-hint" style="margin-bottom:1rem;">Set the start and end dates for the Big Year. Times are entered in EDT (Eastern Daylight Time). Bird log entries are only allowed between these two moments.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+        <div>
+          <label class="form-label">Start date &amp; time (EDT)</label>
+          <input id="admin-by-start" class="form-input" type="datetime-local">
+        </div>
+        <div>
+          <label class="form-label">End date &amp; time (EDT)</label>
+          <input id="admin-by-end" class="form-input" type="datetime-local">
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.75rem;">
+        <button class="btn-admin-save" onclick="adminSaveDates()">Save dates</button>
+        <div class="admin-feedback" id="afb-dates" style="margin:0;"></div>
+      </div>
+      <div style="margin-top:0.75rem;font-size:0.75rem;color:rgba(245,237,214,0.3);font-style:italic;" id="admin-by-current"></div>
+    </div>
+
+    <hr class="section-rule">
+    <div class="section-label">Family accounts</div>
     <div id="admin-user-list"></div>
   </div>
   <div class="site-footer">LaManna Family Big Year · Admin</div>
@@ -863,6 +886,18 @@ window.savePassword = async function() {
 
 // ── ADMIN ──────────────────────────────────────────────────────────────────
 async function renderAdmin() {
+  await loadByDates();
+
+  // Populate date inputs with current BY_START/BY_END in EDT local time
+  function toLocalInput(utcDate) {
+    // Convert UTC to EDT (UTC-4) for display in datetime-local input
+    const edt = new Date(utcDate.getTime() - 4 * 60 * 60 * 1000);
+    return edt.toISOString().slice(0, 16);
+  }
+  document.getElementById('admin-by-start').value = toLocalInput(BY_START);
+  document.getElementById('admin-by-end').value   = toLocalInput(BY_END);
+  document.getElementById('admin-by-current').textContent =
+    'Currently: ' + fmtDate(BY_START) + ' → ' + fmtDate(BY_END);
   const listEl = document.getElementById('admin-user-list');
   listEl.innerHTML = '<div class="empty-state">Loading accounts…</div>';
 
@@ -920,13 +955,39 @@ window.adminDeleteUser = async function(userKey, displayName) {
   if (!confirm(`Delete ${displayName}'s account and all their birds? This cannot be undone.`)) return;
   const fb = document.getElementById('afb-' + userKey);
   try {
-    // Delete all birds first
     const bSnap = await getDocs(collection(db, 'users', userKey, 'birds'));
     await Promise.all(bSnap.docs.map(d => deleteDoc(doc(db, 'users', userKey, 'birds', d.id))));
-    // Delete user doc
     await deleteDoc(doc(db, 'users', userKey));
     document.getElementById('acard-' + userKey).remove();
   } catch(e) { fb.style.color = '#e07060'; fb.textContent = 'Delete failed.'; console.error(e); }
+}
+
+window.adminSaveDates = async function() {
+  const startVal = document.getElementById('admin-by-start').value;
+  const endVal   = document.getElementById('admin-by-end').value;
+  const fb = document.getElementById('afb-dates');
+  fb.style.color = '#e07060'; fb.textContent = '';
+
+  if (!startVal || !endVal) { fb.textContent = 'Both dates are required.'; return; }
+
+  // datetime-local is in EDT (UTC-4), convert to UTC ISO string for storage
+  const startUTC = new Date(new Date(startVal).getTime() + 4 * 60 * 60 * 1000).toISOString();
+  const endUTC   = new Date(new Date(endVal).getTime()   + 4 * 60 * 60 * 1000).toISOString();
+
+  if (new Date(startUTC) >= new Date(endUTC)) {
+    fb.textContent = 'Start must be before end.'; return;
+  }
+
+  try {
+    await setDoc(doc(db, 'config', 'bigyear'), { start: startUTC, end: endUTC });
+    BY_START = new Date(startUTC);
+    BY_END   = new Date(endUTC);
+    fb.style.color = '#7ec87e';
+    fb.textContent = 'Dates saved.';
+    document.getElementById('admin-by-current').textContent =
+      'Currently: ' + fmtDate(BY_START) + ' → ' + fmtDate(BY_END);
+    setTimeout(() => { fb.textContent = ''; }, 3000);
+  } catch(e) { fb.textContent = 'Save failed.'; console.error(e); }
 }
 
 // ── Load all users (for leaderboard / profiles) ────────────────────────────
@@ -1072,10 +1133,20 @@ window.renderBirdCards = function() {
 }
 
 // ── BIG YEAR DATES ─────────────────────────────────────────────────────────
-// 7/17/2026 12:00 AM EDT = UTC-4 → 04:00 UTC
-const BY_START = new Date('2026-07-17T04:00:00Z');
-// 7/10/2027 12:00 AM EDT = UTC-4 → 04:00 UTC
-const BY_END   = new Date('2027-07-10T04:00:00Z');
+// Defaults — overridden by Firestore config/bigyear if set
+let BY_START = new Date('2026-07-17T04:00:00Z');
+let BY_END   = new Date('2027-07-10T04:00:00Z');
+
+async function loadByDates() {
+  try {
+    const snap = await getDoc(doc(db, 'config', 'bigyear'));
+    if (snap.exists()) {
+      const d = snap.data();
+      if (d.start) BY_START = new Date(d.start);
+      if (d.end)   BY_END   = new Date(d.end);
+    }
+  } catch(e) { console.error('loadByDates', e); }
+}
 
 function isBigYearActive() {
   const now = Date.now();
@@ -1088,6 +1159,10 @@ function renderCountdown() {
   if (cdInterval) clearInterval(cdInterval);
   tickCountdown();
   cdInterval = setInterval(tickCountdown, 1000);
+}
+
+function fmtDate(d) {
+  return d.toLocaleString('en-US', { month:'long', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', timeZone:'America/New_York', timeZoneName:'short' });
 }
 
 function tickCountdown() {
@@ -1105,18 +1180,16 @@ function tickCountdown() {
   if (!phaseEl) { clearInterval(cdInterval); return; }
 
   if (now < BY_START.getTime()) {
-    // Pre-start: counting down to kick-off
     const diff = BY_START.getTime() - now;
     phaseEl.textContent = 'Big Year begins in';
     titleEl.textContent = 'Get ready to watch';
-    targetEl.textContent = 'July 17, 2026 · 12:00 AM EDT';
+    targetEl.textContent = fmtDate(BY_START);
     subEl.textContent = 'The moment the clock hits midnight, bird entries open. May the best birder win.';
     gridEl.style.display = 'flex';
     setCountdownNums(diff);
     progWrap.style.display = 'none';
 
   } else if (now < BY_END.getTime()) {
-    // Active: Big Year in progress
     const diff = BY_END.getTime() - now;
     const total = BY_END.getTime() - BY_START.getTime();
     const elapsed = now - BY_START.getTime();
@@ -1124,21 +1197,20 @@ function tickCountdown() {
 
     phaseEl.textContent = 'Big Year in progress';
     titleEl.textContent = 'Time remaining';
-    targetEl.textContent = 'Ends July 10, 2027 · 12:00 AM EDT';
+    targetEl.textContent = 'Ends ' + fmtDate(BY_END);
     subEl.textContent = 'Log every bird. Every point counts.';
     gridEl.style.display = 'flex';
     setCountdownNums(diff);
     progWrap.style.display = 'block';
     barEl.style.width = pct.toFixed(2) + '%';
-    progStart.textContent = 'Jul 17, 2026';
-    progEnd.textContent = 'Jul 10, 2027';
+    progStart.textContent = BY_START.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    progEnd.textContent   = BY_END.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
 
   } else {
-    // Ended
     clearInterval(cdInterval);
     phaseEl.textContent = 'Big Year complete';
     titleEl.textContent = '🏆 The count is final';
-    targetEl.textContent = 'Ended July 10, 2027 · 12:00 AM EDT';
+    targetEl.textContent = 'Ended ' + fmtDate(BY_END);
     subEl.textContent = 'Bird entries are closed. Check the leaderboard for the final standings.';
     gridEl.style.display = 'none';
     progWrap.style.display = 'none';
@@ -1418,6 +1490,9 @@ document.getElementById('setpw-confirm').addEventListener('keydown', e => { if (
 // ── INIT ───────────────────────────────────────────────────────────────────
 (async function init() {
   document.getElementById('bird-date').valueAsDate = new Date();
+
+  // Load Big Year dates from Firestore before anything else
+  await loadByDates();
 
   if (currentUser) {
     if (currentUser === '__admin__') {
