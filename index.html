@@ -1094,6 +1094,24 @@ async function renderBirdsPage(userKey, isOwn) {
   document.getElementById('add-bird-section').style.display = isOwn ? '' : 'none';
   document.getElementById('bird-search').value = '';
 
+  // Lock the log form if outside the Big Year window
+  if (isOwn) {
+    const active = isBigYearActive();
+    const btn = document.getElementById('add-bird-btn');
+    const errEl = document.getElementById('bird-error');
+    btn.disabled = !active;
+    if (!active) {
+      const now = Date.now();
+      errEl.style.color = '#e07060';
+      errEl.textContent = now < BY_START.getTime()
+        ? 'Logging opens ' + fmtDate(BY_START) + '.'
+        : 'The Big Year has ended. No new entries.';
+    } else {
+      errEl.textContent = '';
+      errEl.style.color = '';
+    }
+  }
+
   const snap = await getDocs(collection(db, 'users', userKey, 'birds'));
   cachedBirds = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   cachedBirds.sort((a, b) => (b.addedAt || '') > (a.addedAt || '') ? 1 : -1);
@@ -1315,13 +1333,15 @@ window.addBird = async function() {
 
   if (!isBigYearActive()) {
     const now = Date.now();
+    errEl.style.color = '#e07060';
     if (now < BY_START.getTime()) {
-      errEl.textContent = 'The Big Year hasn\'t started yet. Entries open July 17, 2026 at midnight EDT.';
+      errEl.textContent = 'The Big Year hasn\'t started yet. Entries open ' + fmtDate(BY_START) + '.';
     } else {
       errEl.textContent = 'The Big Year has ended. No new entries can be added.';
     }
     return;
   }
+  errEl.style.color = '';
 
   // Check if on Ohio list
   const onList = OHIO_BIRDS_LOWER.includes(species.toLowerCase());
