@@ -225,6 +225,11 @@
   .bird-score.seen { background: rgba(74,103,65,0.3); color: #b8d4b0; border: 1px solid rgba(74,103,65,0.5); }
   .bird-score.heard { background: rgba(92,61,30,0.4); color: #d4b896; border: 1px solid rgba(92,61,30,0.6); }
 
+  /* CHART FILTER BUTTONS */
+  .chart-filter-btn { background: rgba(245,237,214,0.04); border: 1px solid rgba(245,237,214,0.15); border-radius: 20px; padding: 0.3rem 0.85rem; color: rgba(245,237,214,0.4); font-family: 'Source Sans 3', sans-serif; font-size: 0.8rem; cursor: pointer; transition: all 0.15s; }
+  .chart-filter-btn.active { background: color-mix(in srgb, var(--cbtn-color) 20%, transparent); border-color: var(--cbtn-color); color: var(--cbtn-color); }
+  .chart-filter-btn:hover { border-color: var(--cbtn-color); color: var(--cbtn-color); }
+
   /* COUNTDOWN */
   .cd-phase-label { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(200,149,42,0.6); margin-bottom: 0.75rem; }
   .cd-title { font-family: 'Playfair Display', serif; font-size: 2rem; color: var(--gold); margin-bottom: 0.25rem; }
@@ -334,6 +339,7 @@
       <button class="nav-link active" onclick="showPage('home')">Board</button>
       <button class="nav-link" onclick="showPage('birds')">My Birds</button>
       <button class="nav-link" onclick="showPage('profiles')">Family</button>
+      <button class="nav-link" onclick="showPage('chart')">Scores</button>
       <button class="nav-link" onclick="showPage('countdown')">Countdown</button>
       <button class="nav-link" onclick="showPage('myprofile')">My Profile</button>
     </div>
@@ -370,6 +376,7 @@
       <button class="nav-link" onclick="showPage('home')">Board</button>
       <button class="nav-link active" onclick="showPage('birds')">My Birds</button>
       <button class="nav-link" onclick="showPage('profiles')">Family</button>
+      <button class="nav-link" onclick="showPage('chart')">Scores</button>
       <button class="nav-link" onclick="showPage('countdown')">Countdown</button>
       <button class="nav-link" onclick="showPage('myprofile')">My Profile</button>
     </div>
@@ -432,6 +439,7 @@
       <button class="nav-link" onclick="showPage('home')">Board</button>
       <button class="nav-link" onclick="showPage('birds')">My Birds</button>
       <button class="nav-link active" onclick="showPage('profiles')">Family</button>
+      <button class="nav-link" onclick="showPage('chart')">Scores</button>
       <button class="nav-link" onclick="showPage('countdown')">Countdown</button>
       <button class="nav-link" onclick="showPage('myprofile')">My Profile</button>
     </div>
@@ -462,6 +470,7 @@
       <button class="nav-link" onclick="showPage('home')">Board</button>
       <button class="nav-link" onclick="showPage('birds')">My Birds</button>
       <button class="nav-link" onclick="showPage('profiles')">Family</button>
+      <button class="nav-link" onclick="showPage('chart')">Scores</button>
       <button class="nav-link" onclick="showPage('countdown')">Countdown</button>
       <button class="nav-link" onclick="showPage('myprofile')">My Profile</button>
     </div>
@@ -482,6 +491,7 @@
       <button class="nav-link" onclick="showPage('home')">Board</button>
       <button class="nav-link" onclick="showPage('birds')">My Birds</button>
       <button class="nav-link" onclick="showPage('profiles')">Family</button>
+      <button class="nav-link" onclick="showPage('chart')">Scores</button>
       <button class="nav-link" onclick="showPage('countdown')">Countdown</button>
       <button class="nav-link active" onclick="showPage('myprofile')">My Profile</button>
     </div>
@@ -584,6 +594,37 @@
   <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
 </div>
 
+<!-- SCORES CHART PAGE -->
+<div id="page-chart" class="page">
+  <nav>
+    <div class="nav-brand" onclick="showPage('home')"><span>🦅</span> Big Year</div>
+    <div class="nav-links">
+      <button class="nav-link" onclick="showPage('home')">Board</button>
+      <button class="nav-link" onclick="showPage('birds')">My Birds</button>
+      <button class="nav-link" onclick="showPage('profiles')">Family</button>
+      <button class="nav-link active" onclick="showPage('chart')">Scores</button>
+      <button class="nav-link" onclick="showPage('countdown')">Countdown</button>
+      <button class="nav-link" onclick="showPage('myprofile')">My Profile</button>
+    </div>
+    <div class="nav-right">
+      <span class="nav-user" id="nav-username7"></span>
+      <button class="btn-logout" onclick="handleLogout()">Sign out</button>
+    </div>
+  </nav>
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">Score History</div>
+      <div class="page-subtitle">Cumulative points over time</div>
+    </div>
+    <div id="chart-filter-row" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1.5rem;"></div>
+    <div style="position:relative;width:100%;background:rgba(245,237,214,0.03);border:1px solid rgba(200,149,42,0.15);border-radius:6px;padding:1rem;">
+      <canvas id="scores-chart" style="width:100%;"></canvas>
+      <div id="chart-empty" class="empty-state" style="display:none;">No bird data yet — log some birds first.</div>
+    </div>
+  </div>
+  <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
+</div>
+
 <!-- ADMIN PAGE -->
 <div id="page-admin" class="page">
   <nav>
@@ -616,6 +657,16 @@
         <div class="admin-feedback" id="afb-dates" style="margin:0;"></div>
       </div>
       <div style="margin-top:0.75rem;font-size:0.75rem;color:rgba(245,237,214,0.3);font-style:italic;" id="admin-by-current"></div>
+    </div>
+
+    <hr class="section-rule">
+    <div class="section-label">Data export</div>
+    <div class="admin-user-card" style="margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
+      <div>
+        <div style="font-size:0.9rem;font-weight:600;margin-bottom:0.2rem;">Export all bird entries</div>
+        <div class="settings-hint" style="margin:0;">Downloads a CSV with every sighting across all family members — user, bird, location, date, note, and points.</div>
+      </div>
+      <button class="btn-admin-save" id="export-btn" onclick="adminExportCSV()" style="white-space:nowrap;padding:0.55rem 1.25rem;">⬇ Export CSV</button>
     </div>
 
     <hr class="section-rule">
@@ -694,7 +745,7 @@ window.showPage = function(name) {
 
   // sync nav username labels
   const display = allUsersCache[currentUser]?.display || currentUser || '';
-  ['nav-username','nav-username2','nav-username3','nav-username4','nav-username5','nav-username6'].forEach(id => {
+  ['nav-username','nav-username2','nav-username3','nav-username4','nav-username5','nav-username6','nav-username7'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = display;
   });
@@ -704,6 +755,7 @@ window.showPage = function(name) {
   if (name === 'profiles') renderProfiles();
   if (name === 'myprofile') renderMyProfile();
   if (name === 'countdown') renderCountdown();
+  if (name === 'chart') renderScoresChart();
 }
 
 // ── Auth ───────────────────────────────────────────────────────────────────
@@ -844,7 +896,7 @@ window.saveDisplayName = async function() {
     document.getElementById('myprofile-avatar').textContent = initials(val);
     document.getElementById('myprofile-meta').querySelector('.profile-settings-meta-name').textContent = val;
     // Update nav
-    ['nav-username','nav-username2','nav-username3','nav-username4','nav-username5','nav-username6'].forEach(id => {
+    ['nav-username','nav-username2','nav-username3','nav-username4','nav-username5','nav-username6','nav-username7'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.textContent = val;
     });
@@ -999,7 +1051,61 @@ window.adminSaveDates = async function() {
   } catch(e) { fb.textContent = 'Save failed.'; console.error(e); }
 }
 
-// ── Load all users (for leaderboard / profiles) ────────────────────────────
+window.adminExportCSV = async function() {
+  const btn = document.getElementById('export-btn');
+  btn.disabled = true; btn.textContent = '⏳ Exporting…';
+
+  try {
+    await loadAllUsers();
+    const rows = [['User', 'Bird', 'Location', 'Date', 'Note', 'Pts', 'Detection']];
+
+    for (const [key, u] of Object.entries(allUsersCache)) {
+      if (key === '__admin__') continue;
+      const snap = await getDocs(collection(db, 'users', key, 'birds'));
+      snap.docs.forEach(d => {
+        const b = d.data();
+        const det = b.detection || (b.score === 2 ? 'seen' : 'heard');
+        rows.push([
+          csvCell(u.display || key),
+          csvCell(b.species || ''),
+          csvCell(b.location || ''),
+          csvCell(b.date || ''),
+          csvCell(b.note || ''),
+          b.score || 1,
+          det
+        ]);
+      });
+    }
+
+    // Sort by date then user
+    const header = rows[0];
+    const data = rows.slice(1).sort((a, b) => {
+      const dateA = a[3] || '', dateB = b[3] || '';
+      if (dateA !== dateB) return dateA.localeCompare(dateB);
+      return String(a[0]).localeCompare(String(b[0]));
+    });
+
+    const csv = [header, ...data].map(r => r.join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const today = new Date().toISOString().split('T')[0];
+    a.href = url;
+    a.download = `lamanna-bigyear-${today}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    alert('Export failed. Check console for details.');
+    console.error(e);
+  }
+
+  btn.disabled = false; btn.textContent = '⬇ Export CSV';
+}
+
+function csvCell(val) {
+  const s = String(val).replace(/"/g, '""');
+  return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s}"` : s;
+}
 async function loadAllUsers() {
   const snap = await getDocs(collection(db, 'users'));
   snap.forEach(d => { allUsersCache[d.id] = d.data(); });
@@ -1546,6 +1652,219 @@ document.getElementById('setpw-confirm').addEventListener('keydown', e => { if (
   showPage('login');
 })();
 
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// ── SCORES CHART ────────────────────────────────────────────────────────────
+const CHART_COLORS = [
+  '#C8952A','#7ec87e','#7ab8e8','#e07060','#b89adf',
+  '#e8c46a','#60b8a8','#e88a7a','#a8c870','#9ab0d8'
+];
+
+let scoresChartInstance = null;
+let chartActiveUsers = new Set();
+let chartAllData = {}; // { userKey: [ {date, pts} ] }
+
+async function renderScoresChart() {
+  const filterRow = document.getElementById('chart-filter-row');
+  const emptyEl   = document.getElementById('chart-empty');
+  filterRow.innerHTML = '<span style="font-size:0.8rem;color:rgba(245,237,214,0.3);font-style:italic;">Loading…</span>';
+
+  await loadAllUsers();
+
+  // Fetch all users' birds
+  chartAllData = {};
+  for (const [key, u] of Object.entries(allUsersCache)) {
+    if (key === '__admin__') continue;
+    const snap = await getDocs(collection(db, 'users', key, 'birds'));
+    const birds = snap.docs.map(d => d.data()).filter(b => b.date);
+    chartAllData[key] = birds;
+  }
+
+  const userKeys = Object.keys(chartAllData);
+  if (!userKeys.length) {
+    filterRow.innerHTML = '';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  emptyEl.style.display = 'none';
+
+  // Default: all users visible
+  if (!chartActiveUsers.size || ![...chartActiveUsers].some(k => userKeys.includes(k))) {
+    chartActiveUsers = new Set(userKeys);
+  }
+
+  buildFilterButtons(userKeys);
+  drawChart();
+}
+
+function buildFilterButtons(userKeys) {
+  const filterRow = document.getElementById('chart-filter-row');
+  filterRow.innerHTML = userKeys.map((key, i) => {
+    const display = allUsersCache[key]?.display || key;
+    const color = CHART_COLORS[i % CHART_COLORS.length];
+    const active = chartActiveUsers.has(key);
+    return `<button
+      class="chart-filter-btn ${active ? 'active' : ''}"
+      id="cfbtn-${key}"
+      style="--cbtn-color:${color};"
+      onclick="toggleChartUser('${key}')"
+    >${escHTML(display)}</button>`;
+  }).join('');
+}
+
+function escHTML(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+window.toggleChartUser = function(key) {
+  if (chartActiveUsers.has(key)) {
+    if (chartActiveUsers.size === 1) return; // keep at least 1
+    chartActiveUsers.delete(key);
+  } else {
+    chartActiveUsers.add(key);
+  }
+  const btn = document.getElementById('cfbtn-' + key);
+  if (btn) btn.classList.toggle('active', chartActiveUsers.has(key));
+  drawChart();
+}
+
+function buildTimeline(birds) {
+  // For a user's birds, compute cumulative best-score per species over time
+  // Returns array of {date: 'YYYY-MM-DD', pts: number} sorted by date
+  if (!birds.length) return [];
+
+  const byDate = {};
+  birds.forEach(b => {
+    const d = b.date;
+    if (!byDate[d]) byDate[d] = [];
+    byDate[d].push(b);
+  });
+
+  const sortedDates = Object.keys(byDate).sort();
+  const bestPerSpecies = {};
+  const points = [];
+
+  sortedDates.forEach(date => {
+    byDate[date].forEach(b => {
+      const key = b.species.toLowerCase();
+      const s = b.score || 1;
+      if (!bestPerSpecies[key] || s > bestPerSpecies[key]) {
+        bestPerSpecies[key] = s;
+      }
+    });
+    const total = Object.values(bestPerSpecies).reduce((a, v) => a + v, 0);
+    points.push({ date, pts: total });
+  });
+
+  return points;
+}
+
+function drawChart() {
+  const canvas = document.getElementById('scores-chart');
+  if (!canvas) return;
+
+  // Collect all dates across active users
+  const allDates = new Set();
+  const userKeys = [...chartActiveUsers];
+
+  userKeys.forEach(key => {
+    (chartAllData[key] || []).forEach(b => { if (b.date) allDates.add(b.date); });
+  });
+
+  if (!allDates.size) return;
+
+  // Sort dates and add today as the right edge if Big Year active or ended
+  const sortedDates = [...allDates].sort();
+  const today = new Date().toISOString().split('T')[0];
+  if (!allDates.has(today)) sortedDates.push(today);
+
+  const datasets = userKeys.map((key, i) => {
+    const timeline = buildTimeline(chartAllData[key] || []);
+    const color = CHART_COLORS[i % CHART_COLORS.length];
+
+    // Build a value for every label date (carry forward last known pts)
+    let lastPts = 0;
+    const data = sortedDates.map(date => {
+      const entry = timeline.find(t => t.date === date);
+      if (entry) lastPts = entry.pts;
+      // Only show points from the first logged bird onward
+      const firstDate = timeline[0]?.date;
+      if (!firstDate || date < firstDate) return null;
+      return lastPts;
+    });
+
+    return {
+      label: allUsersCache[key]?.display || key,
+      data,
+      borderColor: color,
+      backgroundColor: color + '22',
+      borderWidth: 2.5,
+      pointRadius: 3,
+      pointHoverRadius: 6,
+      tension: 0.3,
+      fill: false,
+      spanGaps: false,
+    };
+  });
+
+  if (scoresChartInstance) scoresChartInstance.destroy();
+
+  scoresChartInstance = new Chart(canvas, {
+    type: 'line',
+    data: { labels: sortedDates, datasets },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display: false // we use our own filter buttons
+        },
+        tooltip: {
+          backgroundColor: '#1e3520',
+          borderColor: 'rgba(200,149,42,0.4)',
+          borderWidth: 1,
+          titleColor: '#C8952A',
+          bodyColor: '#F5EDD6',
+          padding: 10,
+          callbacks: {
+            title: items => items[0].label,
+            label: item => ` ${item.dataset.label}: ${item.parsed.y} pts`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: 'rgba(245,237,214,0.4)',
+            font: { size: 11 },
+            maxTicksLimit: 12,
+            maxRotation: 30,
+          },
+          grid: { color: 'rgba(245,237,214,0.05)' },
+          border: { color: 'rgba(200,149,42,0.2)' }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: 'rgba(245,237,214,0.4)',
+            font: { size: 11 },
+            stepSize: 1,
+          },
+          grid: { color: 'rgba(245,237,214,0.08)' },
+          border: { color: 'rgba(200,149,42,0.2)' },
+          title: {
+            display: true,
+            text: 'Points',
+            color: 'rgba(200,149,42,0.5)',
+            font: { size: 11 }
+          }
+        }
+      }
+    }
+  });
+}
 </script>
 </body>
 </html>
