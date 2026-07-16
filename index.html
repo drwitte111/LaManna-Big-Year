@@ -545,7 +545,19 @@
 
     <hr class="section-rule">
 
-    <!-- Change password -->
+    <!-- Change username (login name) -->
+    <div class="settings-section">
+      <div class="section-label">Login name</div>
+      <p class="settings-hint">This is the name you type to sign in. Changing it means you'll use the new name next time you log in.</p>
+      <div class="settings-row">
+        <input id="prof-username" class="form-input" type="text" placeholder="New login name" style="max-width:300px;" autocomplete="off">
+        <input id="prof-username-pw" class="form-input" type="password" placeholder="Current password to confirm" style="max-width:220px;">
+        <button class="btn-admin-save" onclick="saveUsername()">Save</button>
+      </div>
+      <div class="settings-feedback" id="fb-username"></div>
+    </div>
+
+    <hr class="section-rule">
     <div class="settings-section">
       <div class="section-label">Change password</div>
       <p class="settings-hint">Must be at least 4 characters and can't be the family password.</p>
@@ -913,10 +925,12 @@ async function renderMyProfile() {
 
   document.getElementById('prof-displayname').value = display;
   document.getElementById('prof-realname').value = realName;
+  document.getElementById('prof-username').value = currentUser;
+  document.getElementById('prof-username-pw').value = '';
   document.getElementById('prof-pw-current').value = '';
   document.getElementById('prof-pw-new').value = '';
   document.getElementById('prof-pw-confirm').value = '';
-  ['fb-displayname','fb-realname','fb-password'].forEach(id => {
+  ['fb-displayname','fb-realname','fb-username','fb-password'].forEach(id => {
     const el = document.getElementById(id);
     el.textContent = ''; el.className = 'settings-feedback';
   });
@@ -953,6 +967,66 @@ window.saveRealName = async function() {
     allUsersCache[currentUser] = { ...allUsersCache[currentUser], realName: val };
     setFeedback('fb-realname', 'Real name updated.', false);
   } catch(e) { setFeedback('fb-realname', 'Save failed.', true); console.error(e); }
+}
+
+window.saveUsername = async function() {
+  const newKey = document.getElementById('prof-username').value.trim().toLowerCase().replace(/\s+/g, '_');
+  const pw = document.getElementById('prof-username-pw').value;
+  const fb = 'fb-username';
+
+  if (!newKey) { setFeedback(fb, 'Enter a new login name.', true); return; }
+  if (newKey === currentUser) { setFeedback(fb, 'That\'s already your login name.', true); return; }
+  if (newKey === 'admin') { setFeedback(fb, '"admin" is reserved.', true); return; }
+  if (!pw) { setFeedback(fb, 'Enter your current password to confirm.', true); return; }
+
+  // Verify password
+  const snap = await getDoc(doc(db, 'users', currentUser));
+  if (!snap.exists() || snap.data().password !== pw) {
+    setFeedback(fb, 'Wrong password.', true); return;
+  }
+
+  // Check new key isn't already taken
+  const existingSnap = await getDoc(doc(db, 'users', newKey));
+  if (existingSnap.exists()) {
+    setFeedback(fb, 'That login name is already taken.', true); return;
+  }
+
+  try {
+    const userData = snap.data();
+
+    // Copy all data to new doc
+    await setDoc(doc(db, 'users', newKey), userData);
+
+    // Copy all birds to new user
+    const birdsSnap = await getDocs(collection(db, 'users', currentUser, 'birds'));
+    await Promise.all(birdsSnap.docs.map(d =>
+      setDoc(doc(db, 'users', newKey, 'birds', d.id), d.data())
+    ));
+
+    // Delete old user doc and birds
+    await Promise.all(birdsSnap.docs.map(d =>
+      deleteDoc(doc(db, 'users', currentUser, 'birds', d.id))
+    ));
+    await deleteDoc(doc(db, 'users', currentUser));
+
+    // Update session
+    const oldKey = currentUser;
+    currentUser = newKey;
+    sessionStorage.setItem('bigyear_user', newKey);
+    allUsersCache[newKey] = { ...userData };
+    delete allUsersCache[oldKey];
+
+    document.getElementById('prof-username').value = newKey;
+    document.getElementById('prof-username-pw').value = '';
+    setFeedback(fb, `Login name changed to "${newKey}". Use it next time you sign in.`, false);
+
+    // Update nav display names
+    const display = userData.display || newKey;
+    ['nav-username','nav-username2','nav-username3','nav-username4','nav-username5','nav-username6','nav-username7','nav-username8'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = display;
+    });
+  } catch(e) { setFeedback(fb, 'Save failed.', true); console.error(e); }
 }
 
 window.savePassword = async function() {
