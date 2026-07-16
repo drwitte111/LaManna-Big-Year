@@ -225,6 +225,17 @@
   .bird-score.seen { background: rgba(74,103,65,0.3); color: #b8d4b0; border: 1px solid rgba(74,103,65,0.5); }
   .bird-score.heard { background: rgba(92,61,30,0.4); color: #d4b896; border: 1px solid rgba(92,61,30,0.6); }
 
+  /* PROFILE SETTINGS */
+  .profile-settings-card { display: flex; align-items: center; gap: 1.25rem; padding: 1.25rem; background: rgba(245,237,214,0.04); border: 1px solid rgba(200,149,42,0.2); border-radius: 6px; margin-bottom: 1.5rem; }
+  .profile-settings-avatar { width: 60px; height: 60px; border-radius: 50%; background: var(--sage); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--cream); border: 2px solid rgba(200,149,42,0.3); flex-shrink: 0; }
+  .profile-settings-meta-name { font-family: 'Playfair Display', serif; font-size: 1.2rem; color: var(--gold); }
+  .profile-settings-meta-sub { font-size: 0.8rem; color: rgba(245,237,214,0.4); margin-top: 0.15rem; font-style: italic; }
+  .settings-section { margin-bottom: 0.5rem; }
+  .settings-hint { font-size: 0.8rem; color: rgba(245,237,214,0.4); margin-bottom: 0.75rem; font-style: italic; }
+  .settings-row { display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap; }
+  .settings-feedback { font-size: 0.78rem; margin-top: 0.5rem; min-height: 1em; color: #7ec87e; }
+  .settings-feedback.error { color: #e07060; }
+
   /* ADMIN */
   .admin-user-card { background: rgba(245,237,214,0.04); border: 1px solid rgba(200,149,42,0.2); border-radius: 6px; padding: 1rem 1.1rem; margin-bottom: 0.75rem; }
   .admin-user-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
@@ -307,6 +318,7 @@
       <button class="nav-link active" onclick="showPage('home')">Board</button>
       <button class="nav-link" onclick="showPage('birds')">My Birds</button>
       <button class="nav-link" onclick="showPage('profiles')">Family</button>
+      <button class="nav-link" onclick="showPage('myprofile')">My Profile</button>
     </div>
     <div class="nav-right">
       <span class="nav-user" id="nav-username"></span>
@@ -341,6 +353,7 @@
       <button class="nav-link" onclick="showPage('home')">Board</button>
       <button class="nav-link active" onclick="showPage('birds')">My Birds</button>
       <button class="nav-link" onclick="showPage('profiles')">Family</button>
+      <button class="nav-link" onclick="showPage('myprofile')">My Profile</button>
     </div>
     <div class="nav-right">
       <span class="nav-user" id="nav-username2"></span>
@@ -401,6 +414,7 @@
       <button class="nav-link" onclick="showPage('home')">Board</button>
       <button class="nav-link" onclick="showPage('birds')">My Birds</button>
       <button class="nav-link active" onclick="showPage('profiles')">Family</button>
+      <button class="nav-link" onclick="showPage('myprofile')">My Profile</button>
     </div>
     <div class="nav-right">
       <span class="nav-user" id="nav-username3"></span>
@@ -429,6 +443,7 @@
       <button class="nav-link" onclick="showPage('home')">Board</button>
       <button class="nav-link" onclick="showPage('birds')">My Birds</button>
       <button class="nav-link" onclick="showPage('profiles')">Family</button>
+      <button class="nav-link" onclick="showPage('myprofile')">My Profile</button>
     </div>
     <div class="nav-right">
       <span class="nav-user" id="nav-username4"></span>
@@ -436,6 +451,77 @@
     </div>
   </nav>
   <div class="content" id="profile-view-content"></div>
+  <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
+</div>
+
+<!-- MY PROFILE SETTINGS -->
+<div id="page-myprofile" class="page">
+  <nav>
+    <div class="nav-brand" onclick="showPage('home')"><span>🦅</span> Big Year</div>
+    <div class="nav-links">
+      <button class="nav-link" onclick="showPage('home')">Board</button>
+      <button class="nav-link" onclick="showPage('birds')">My Birds</button>
+      <button class="nav-link" onclick="showPage('profiles')">Family</button>
+      <button class="nav-link active" onclick="showPage('myprofile')">My Profile</button>
+    </div>
+    <div class="nav-right">
+      <span class="nav-user" id="nav-username5"></span>
+      <button class="btn-logout" onclick="handleLogout()">Sign out</button>
+    </div>
+  </nav>
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">My Profile</div>
+      <div class="page-subtitle">Update your info and credentials</div>
+    </div>
+
+    <div class="profile-settings-card">
+      <div class="profile-settings-avatar" id="myprofile-avatar"></div>
+      <div class="profile-settings-meta" id="myprofile-meta"></div>
+    </div>
+
+    <hr class="section-rule">
+
+    <!-- Display name -->
+    <div class="settings-section">
+      <div class="section-label">Display name</div>
+      <p class="settings-hint">This is the name shown to the family — can be a nickname or your real name.</p>
+      <div class="settings-row">
+        <input id="prof-displayname" class="form-input" type="text" placeholder="Your display name" style="max-width:300px;">
+        <button class="btn-admin-save" onclick="saveDisplayName()">Save</button>
+      </div>
+      <div class="settings-feedback" id="fb-displayname"></div>
+    </div>
+
+    <hr class="section-rule">
+
+    <!-- Real name -->
+    <div class="settings-section">
+      <div class="section-label">Real name</div>
+      <p class="settings-hint">Optional — only shown on your own profile page.</p>
+      <div class="settings-row">
+        <input id="prof-realname" class="form-input" type="text" placeholder="e.g. David Witte" style="max-width:300px;">
+        <button class="btn-admin-save" onclick="saveRealName()">Save</button>
+      </div>
+      <div class="settings-feedback" id="fb-realname"></div>
+    </div>
+
+    <hr class="section-rule">
+
+    <!-- Change password -->
+    <div class="settings-section">
+      <div class="section-label">Change password</div>
+      <p class="settings-hint">Must be at least 4 characters and can't be the family password.</p>
+      <div class="settings-row" style="flex-wrap:wrap;gap:0.5rem;">
+        <input id="prof-pw-current" class="form-input" type="password" placeholder="Current password" style="max-width:200px;">
+        <input id="prof-pw-new" class="form-input" type="password" placeholder="New password" style="max-width:200px;">
+        <input id="prof-pw-confirm" class="form-input" type="password" placeholder="Confirm new" style="max-width:200px;">
+        <button class="btn-admin-save" onclick="savePassword()">Update</button>
+      </div>
+      <div class="settings-feedback" id="fb-password"></div>
+    </div>
+
+  </div>
   <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
 </div>
 
@@ -525,7 +611,7 @@ window.showPage = function(name) {
 
   // sync nav username labels
   const display = allUsersCache[currentUser]?.display || currentUser || '';
-  ['nav-username','nav-username2','nav-username3','nav-username4'].forEach(id => {
+  ['nav-username','nav-username2','nav-username3','nav-username4','nav-username5'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = display;
   });
@@ -533,6 +619,7 @@ window.showPage = function(name) {
   if (name === 'home') renderHome();
   if (name === 'birds') renderBirdsPage(currentUser, true);
   if (name === 'profiles') renderProfiles();
+  if (name === 'myprofile') renderMyProfile();
 }
 
 // ── Auth ───────────────────────────────────────────────────────────────────
@@ -627,6 +714,90 @@ window.handleLogout = function() {
   currentUser = null;
   sessionStorage.removeItem('bigyear_user');
   showPage('login');
+}
+
+// ── MY PROFILE ─────────────────────────────────────────────────────────────
+async function renderMyProfile() {
+  const snap = await getDoc(doc(db, 'users', currentUser));
+  if (!snap.exists()) return;
+  const u = snap.data();
+  allUsersCache[currentUser] = u;
+
+  const display = u.display || currentUser;
+  const realName = u.realName || '';
+
+  document.getElementById('myprofile-avatar').textContent = initials(display);
+  document.getElementById('myprofile-meta').innerHTML = `
+    <div class="profile-settings-meta-name">${esc(display)}</div>
+    ${realName ? `<div class="profile-settings-meta-sub">${esc(realName)}</div>` : ''}
+    <div class="profile-settings-meta-sub">@${esc(currentUser)}</div>
+  `;
+
+  document.getElementById('prof-displayname').value = display;
+  document.getElementById('prof-realname').value = realName;
+  document.getElementById('prof-pw-current').value = '';
+  document.getElementById('prof-pw-new').value = '';
+  document.getElementById('prof-pw-confirm').value = '';
+  ['fb-displayname','fb-realname','fb-password'].forEach(id => {
+    const el = document.getElementById(id);
+    el.textContent = ''; el.className = 'settings-feedback';
+  });
+}
+
+function setFeedback(id, msg, isError) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'settings-feedback' + (isError ? ' error' : '');
+  if (!isError) setTimeout(() => { el.textContent = ''; }, 3000);
+}
+
+window.saveDisplayName = async function() {
+  const val = document.getElementById('prof-displayname').value.trim();
+  if (!val) { setFeedback('fb-displayname', 'Enter a display name.', true); return; }
+  try {
+    await updateDoc(doc(db, 'users', currentUser), { display: val });
+    allUsersCache[currentUser] = { ...allUsersCache[currentUser], display: val };
+    document.getElementById('myprofile-avatar').textContent = initials(val);
+    document.getElementById('myprofile-meta').querySelector('.profile-settings-meta-name').textContent = val;
+    // Update nav
+    ['nav-username','nav-username2','nav-username3','nav-username4','nav-username5'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = val;
+    });
+    setFeedback('fb-displayname', 'Display name updated.', false);
+  } catch(e) { setFeedback('fb-displayname', 'Save failed.', true); console.error(e); }
+}
+
+window.saveRealName = async function() {
+  const val = document.getElementById('prof-realname').value.trim();
+  try {
+    await updateDoc(doc(db, 'users', currentUser), { realName: val });
+    allUsersCache[currentUser] = { ...allUsersCache[currentUser], realName: val };
+    setFeedback('fb-realname', 'Real name updated.', false);
+  } catch(e) { setFeedback('fb-realname', 'Save failed.', true); console.error(e); }
+}
+
+window.savePassword = async function() {
+  const current = document.getElementById('prof-pw-current').value;
+  const pw1 = document.getElementById('prof-pw-new').value;
+  const pw2 = document.getElementById('prof-pw-confirm').value;
+
+  const snap = await getDoc(doc(db, 'users', currentUser));
+  if (!snap.exists()) { setFeedback('fb-password', 'Account error.', true); return; }
+  const stored = snap.data().password;
+
+  if (current !== stored) { setFeedback('fb-password', 'Current password is wrong.', true); return; }
+  if (pw1.length < 4) { setFeedback('fb-password', 'New password must be at least 4 characters.', true); return; }
+  if (pw1 === FAMILY_PW) { setFeedback('fb-password', "Can't reuse the family password.", true); return; }
+  if (pw1 !== pw2) { setFeedback('fb-password', "Passwords don't match.", true); return; }
+
+  try {
+    await updateDoc(doc(db, 'users', currentUser), { password: pw1 });
+    document.getElementById('prof-pw-current').value = '';
+    document.getElementById('prof-pw-new').value = '';
+    document.getElementById('prof-pw-confirm').value = '';
+    setFeedback('fb-password', 'Password updated.', false);
+  } catch(e) { setFeedback('fb-password', 'Save failed.', true); console.error(e); }
 }
 
 // ── ADMIN ──────────────────────────────────────────────────────────────────
@@ -1065,7 +1236,7 @@ window.viewProfile = async function(userKey) {
       <div class="profile-avatar-xl">${initials(u.display)}</div>
       <div>
         <div class="profile-info-name">${esc(u.display)}${isMe ? '<span class="tag">You</span>' : ''}</div>
-        <div class="profile-info-sub">Member of the LaManna Big Year</div>
+        <div class="profile-info-sub">${u.realName ? esc(u.realName) + ' · ' : ''}Member of the LaManna Big Year</div>
       </div>
     </div>
     <div class="stats-row">
@@ -1083,6 +1254,7 @@ window.viewProfile = async function(userKey) {
 
 // ── KEYBOARD ───────────────────────────────────────────────────────────────
 document.getElementById('login-password').addEventListener('keydown', e => { if (e.key==='Enter') handleLogin(); });
+document.getElementById('prof-pw-confirm').addEventListener('keydown', e => { if (e.key==='Enter') savePassword(); });
 document.getElementById('login-username').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('login-password').focus(); });
 document.getElementById('setpw-confirm').addEventListener('keydown', e => { if (e.key==='Enter') handleSetPassword(); });
 
