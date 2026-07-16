@@ -204,14 +204,26 @@
   .back-btn { background: none; border: none; color: rgba(200,149,42,0.6); font-family: 'Source Sans 3', sans-serif; font-size: 0.8rem; cursor: pointer; padding: 0; margin-bottom: 1.25rem; display: inline-flex; align-items: center; gap: 0.3rem; transition: color 0.15s; }
   .back-btn:hover { color: var(--gold); }
 
-  /* PHOTO PLACEHOLDER */
-  .photo-placeholder { background: rgba(245,237,214,0.03); border: 2px dashed rgba(200,149,42,0.2); border-radius: 8px; padding: 3rem 2rem; text-align: center; margin-top: 1.5rem; }
-  .photo-placeholder-icon { font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.4; }
-  .photo-placeholder-title { font-family: 'Playfair Display', serif; font-size: 1.1rem; color: rgba(200,149,42,0.5); margin-bottom: 0.5rem; }
-  .photo-placeholder-text { font-size: 0.8rem; color: rgba(245,237,214,0.25); font-style: italic; }
-
   .tag { display: inline-block; font-size: 0.65rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 0.15rem 0.5rem; border-radius: 2px; background: rgba(74,103,65,0.25); color: #b8d4b0; border: 1px solid rgba(74,103,65,0.4); margin-left: 0.35rem; }
   .site-footer { border-top: 1px solid rgba(200,149,42,0.15); padding: 1rem 1.5rem; text-align: center; font-size: 0.72rem; color: rgba(245,237,214,0.2); font-style: italic; }
+
+  /* AUTOCOMPLETE */
+  .suggestions-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: #1e3520; border: 1px solid rgba(200,149,42,0.4); border-top: none; border-radius: 0 0 var(--radius) var(--radius); max-height: 180px; overflow-y: auto; z-index: 200; display: none; }
+  .suggestions-dropdown.open { display: block; }
+  .suggestion-item { padding: 0.5rem 0.85rem; font-size: 0.88rem; cursor: pointer; color: var(--cream); transition: background 0.1s; }
+  .suggestion-item:hover, .suggestion-item.active { background: rgba(200,149,42,0.15); color: var(--gold); }
+
+  /* DETECTION TOGGLE */
+  .detection-toggle { display: flex; gap: 0.5rem; margin-top: 0.25rem; }
+  .detection-btn { flex: 1; background: rgba(245,237,214,0.04); border: 1px solid rgba(200,149,42,0.25); border-radius: var(--radius); padding: 0.55rem 0.5rem; color: rgba(245,237,214,0.5); font-family: 'Source Sans 3', sans-serif; font-size: 0.88rem; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 0.4rem; }
+  .detection-btn.active { background: rgba(200,149,42,0.15); border-color: var(--gold); color: var(--gold); }
+  .pts-badge { font-size: 0.68rem; background: rgba(200,149,42,0.15); border-radius: 2px; padding: 0.1rem 0.3rem; }
+  .detection-btn.active .pts-badge { background: rgba(200,149,42,0.3); }
+
+  /* BIRD CARD SCORE BADGE */
+  .bird-score { display: inline-block; font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: 2px; margin-left: 0.3rem; font-weight: 600; letter-spacing: 0.04em; }
+  .bird-score.seen { background: rgba(74,103,65,0.3); color: #b8d4b0; border: 1px solid rgba(74,103,65,0.5); }
+  .bird-score.heard { background: rgba(92,61,30,0.4); color: #d4b896; border: 1px solid rgba(92,61,30,0.6); }
 
   /* ADMIN */
   .admin-user-card { background: rgba(245,237,214,0.04); border: 1px solid rgba(200,149,42,0.2); border-radius: 6px; padding: 1rem 1.1rem; margin-bottom: 0.75rem; }
@@ -343,9 +355,10 @@
     <div class="add-bird-form" id="add-bird-section">
       <div class="section-label">Log a bird</div>
       <div class="add-bird-grid">
-        <div>
+        <div style="position:relative;">
           <label class="form-label">Species name</label>
-          <input id="bird-species" class="form-input" type="text" placeholder="e.g. American Robin">
+          <input id="bird-species" class="form-input" type="text" placeholder="e.g. American Robin" autocomplete="off" oninput="filterSuggestions()" onkeydown="suggestionKeydown(event)">
+          <div id="species-suggestions" class="suggestions-dropdown"></div>
         </div>
         <div>
           <label class="form-label">Location</label>
@@ -360,13 +373,15 @@
           <input id="bird-note" class="form-input" type="text" placeholder="Anything memorable">
         </div>
       </div>
+      <div style="margin-bottom:0.75rem;">
+        <label class="form-label">How did you detect it?</label>
+        <div class="detection-toggle">
+          <button type="button" class="detection-btn active" id="btn-seen" onclick="setDetection('seen')">👁 Seen <span class="pts-badge">2 pts</span></button>
+          <button type="button" class="detection-btn" id="btn-heard" onclick="setDetection('heard')">👂 Heard <span class="pts-badge">1 pt</span></button>
+        </div>
+      </div>
       <button class="btn-add-bird" id="add-bird-btn" onclick="addBird()">+ Log this bird</button>
       <div id="bird-error" class="form-error"></div>
-    </div>
-    <div class="photo-placeholder">
-      <div class="photo-placeholder-icon">📷</div>
-      <div class="photo-placeholder-title">Photo uploads coming soon</div>
-      <div class="photo-placeholder-text">This space is reserved for field photos attached to your sightings.</div>
     </div>
     <hr class="section-rule">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
@@ -692,20 +707,27 @@ async function loadAllUsers() {
 async function renderHome() {
   await loadAllUsers();
 
-  // Stats: count each user's unique species
-  let myCount = 0, totalSpecies = 0;
+  // Stats: count each user's points
+  let myPoints = 0, totalPoints = 0;
   const memberCount = Object.keys(allUsersCache).length;
 
   for (const uKey of Object.keys(allUsersCache)) {
     const snap = await getDocs(collection(db, 'users', uKey, 'birds'));
-    const names = [...new Set(snap.docs.map(d => d.data().species.toLowerCase()))];
-    if (uKey === currentUser) myCount = names.length;
-    totalSpecies += names.length;
+    const birds = snap.docs.map(d => d.data());
+    const best = {};
+    birds.forEach(b => {
+      const k = b.species.toLowerCase();
+      const s = b.score || 1;
+      if (!best[k] || s > best[k]) best[k] = s;
+    });
+    const pts = Object.values(best).reduce((a, v) => a + v, 0);
+    if (uKey === currentUser) myPoints = pts;
+    totalPoints += pts;
   }
 
   document.getElementById('home-stats').innerHTML = `
-    <div class="stat-card"><div class="stat-num">${myCount}</div><div class="stat-label">My species</div></div>
-    <div class="stat-card"><div class="stat-num">${totalSpecies}</div><div class="stat-label">Family total</div></div>
+    <div class="stat-card"><div class="stat-num">${myPoints}</div><div class="stat-label">My points</div></div>
+    <div class="stat-card"><div class="stat-num">${totalPoints}</div><div class="stat-label">Family total</div></div>
     <div class="stat-card"><div class="stat-num">${memberCount}</div><div class="stat-label">Members</div></div>
     <div class="stat-card"><div class="stat-num">${new Date().getFullYear()}</div><div class="stat-label">Big Year</div></div>
   `;
@@ -783,8 +805,16 @@ window.renderBirdCards = function() {
     (b.location||'').toLowerCase().includes(search)
   ) : cachedBirds;
 
-  const unique = [...new Set(cachedBirds.map(b => b.species.toLowerCase()))].length;
-  document.getElementById('birds-count').textContent = unique;
+  // Dedup by species for count/points (keep highest score per species)
+  const best = {};
+  cachedBirds.forEach(b => {
+    const key = b.species.toLowerCase();
+    const s = b.score || 1;
+    if (!best[key] || s > best[key]) best[key] = s;
+  });
+  const uniqueCount = Object.keys(best).length;
+  const totalPoints = Object.values(best).reduce((a, b) => a + b, 0);
+  document.getElementById('birds-count').textContent = `${uniqueCount} species · ${totalPoints} pts`;
 
   const grid = document.getElementById('birds-grid');
   if (!filtered.length) {
@@ -795,10 +825,13 @@ window.renderBirdCards = function() {
   grid.innerHTML = filtered.map(b => {
     const delBtn = !birdViewReadonly
       ? `<button class="bird-del" onclick="window.deleteBird('${b.id}')" title="Remove">✕</button>` : '';
+    const det = b.detection || (b.score === 2 ? 'seen' : 'heard');
+    const scoreLabel = det === 'seen' ? '👁 Seen · 2pts' : '👂 Heard · 1pt';
+    const scoreCls = det === 'seen' ? 'seen' : 'heard';
     return `
       <div class="bird-card">
         ${delBtn}
-        <div class="bird-name">🐦 ${esc(b.species)}</div>
+        <div class="bird-name">🐦 ${esc(b.species)} <span class="bird-score ${scoreCls}">${scoreLabel}</span></div>
         ${b.location ? `<div class="bird-location">📍 ${esc(b.location)}</div>` : ''}
         <div class="bird-date">${b.date || ''}</div>
         ${b.note ? `<div class="bird-note">${esc(b.note)}</div>` : ''}
@@ -806,6 +839,70 @@ window.renderBirdCards = function() {
   }).join('');
 }
 
+// ── OHIO BIRDS LIST ────────────────────────────────────────────────────────
+const OHIO_BIRDS = ["Acadian flycatcher","Alder flycatcher","Allen's hummingbird","American avocet","American barn owl","American bittern","American black duck","American coot","American flamingo","American golden-plover","American goldfinch","American goshawk","American kestrel","American pipit","American redstart","American robin","American tree sparrow","American white pelican","American woodcock","Ancient murrelet","Anhinga","Anna's hummingbird","Arctic loon","Arctic tern","Ash-throated flycatcher","Atlantic puffin","Baird's sandpiper","Baird's sparrow","Bald eagle","Baltimore oriole","Bank swallow","Barn swallow","Barred owl","Barrow's goldeneye","Bay-breasted warbler","Bell's vireo","Belted kingfisher","Bewick's wren","Black guillemot","Black rail","Black scoter","Black vulture","Black-and-white warbler","Black-backed woodpecker","Black-bellied plover","Black-bellied whistling-duck","Black-billed cuckoo","Black-billed magpie","Black-capped chickadee","Black-capped petrel","Black-chinned hummingbird","Black-crowned night heron","Black-headed grosbeak","Black-headed gull","Black-legged kittiwake","Black-necked stilt","Black-tailed gull","Black-throated blue warbler","Black-throated gray warbler","Black-throated green warbler","Black-throated sparrow","Blackburnian warbler","Blackpoll warbler","Blue grosbeak","Blue jay","Blue-gray gnatcatcher","Blue-headed vireo","Blue-winged teal","Blue-winged warbler","Bobolink","Bohemian waxwing","Boreal chickadee","Boreal owl","Brambling","Brant","Brewer's blackbird","Brewer's sparrow","Broad-billed hummingbird","Broad-winged hawk","Brown booby","Brown creeper","Brown pelican","Brown thrasher","Brown-headed cowbird","Brown-headed nuthatch","Bufflehead","Buff-breasted sandpiper","Burrowing owl","California gull","Calliope hummingbird","Canada goose","Canada warbler","Canvasback","Cape May warbler","Carolina chickadee","Carolina parakeet (extinct)","Carolina wren","Caspian tern","Cave swallow","Cedar waxwing","Cerulean warbler","Chestnut-collared longspur","Chestnut-sided warbler","Chimney swift","Chipping sparrow","Chuck-will's-widow","Cinnamon teal","Clay-colored sparrow","Cliff swallow","Common eider","Common gallinule","Common goldeneye","Common grackle","Common ground dove","Common gull","Common loon","Common merganser","Common nighthawk","Common raven","Common tern","Common yellowthroat","Connecticut warbler","Cooper's hawk","Crested caracara","Curlew sandpiper","Dark-eyed junco","Dickcissel","Double-crested cormorant","Downy woodpecker","Dunlin","Dusky flycatcher","Eared grebe","Eastern bluebird","Eastern kingbird","Eastern meadowlark","Eastern phoebe","Eastern screech-owl","Eastern towhee","Eastern whip-poor-will","Eastern wood-pewee","Eskimo curlew (possibly extinct)","Eurasian collared-dove","Eurasian tree sparrow","Eurasian wigeon","Eurasian woodcock","European starling","Evening grosbeak","Ferruginous hawk","Field sparrow","Fish crow","Forster's tern","Fox sparrow","Franklin's gull","Fulvous whistling-duck","Gadwall","Garganey","Glaucous gull","Glaucous-winged gull","Golden eagle","Golden-crowned kinglet","Golden-crowned sparrow","Golden-winged warbler","Grasshopper sparrow","Gray catbird","Gray flycatcher","Gray kingbird","Gray partridge (extirpated)","Gray-cheeked thrush","Gray-crowned rosy-finch","Great black-backed gull","Great blue heron","Great cormorant","Great crested flycatcher","Great egret","Great gray owl","Great horned owl","Great-tailed grackle","Greater prairie-chicken (extirpated)","Greater scaup","Greater white-fronted goose","Greater yellowlegs","Green heron","Green-tailed towhee","Green-winged teal","Groove-billed ani","Gyrfalcon","Hairy woodpecker","Harlequin duck","Harris's hawk","Harris's sparrow","Heermann's gull","Henslow's sparrow","Hermit thrush","Hooded merganser","Hooded oriole","Hooded warbler","Horned grebe","Horned lark","House finch","House sparrow","Hudsonian godwit","Iceland gull","Indigo bunting","Ivory gull","Ivory-billed woodpecker (possibly extinct)","Kentucky warbler","Killdeer","King eider","King rail","Kirtland's warbler","Lapland longspur","Large-billed tern","Lark bunting","Lark sparrow","Laughing gull","Lazuli bunting","Leach's storm-petrel","Least bittern","Least flycatcher","Least sandpiper","Least tern","LeConte's sparrow","Lesser black-backed gull","Lesser scaup","Lesser yellowlegs","Limpkin","Lincoln's sparrow","Little blue heron","Little gull","Loggerhead shrike","Long-billed curlew","Long-billed dowitcher","Long-billed murrelet","Long-eared owl","Long-tailed duck","Long-tailed jaeger","Louisiana waterthrush","Magnolia warbler","Magnificent frigatebird","Mallard","Marbled godwit","Marsh wren","Merlin","Mexican violetear","Mississippi kite","Mountain bluebird","Mourning dove","Mourning warbler","Mute swan","Nashville warbler","Nelson's sparrow","Neotropic cormorant","Northern bobwhite","Northern cardinal","Northern flicker","Northern gannet","Northern harrier","Northern hawk owl","Northern house wren","Northern lapwing","Northern mockingbird","Northern parula","Northern pintail","Northern rough-winged swallow","Northern saw-whet owl","Northern shoveler","Northern shrike","Northern waterthrush","Northern wheatear","Olive-sided flycatcher","Orange-crowned warbler","Orchard oriole","Osprey","Ovenbird","Palm warbler","Parasitic jaeger","Passenger pigeon (extinct)","Pectoral sandpiper","Peregrine falcon","Philadelphia vireo","Piping plover","Pileated woodpecker","Pied-billed grebe","Pine grosbeak","Pine siskin","Pine warbler","Painted bunting","Painted redstart","Pomarine jaeger","Prairie falcon","Prairie warbler","Prothonotary warbler","Purple finch","Purple gallinule","Purple martin","Purple sandpiper","Red crossbill","Red knot","Red phalarope","Red-bellied woodpecker","Red-breasted merganser","Red-breasted nuthatch","Red-cockaded woodpecker","Red-eyed vireo","Red-headed woodpecker","Red-naped sapsucker","Red-necked grebe","Red-necked phalarope","Red-necked stint","Red-shouldered hawk","Red-tailed hawk","Red-throated loon","Red-winged blackbird","Reddish egret","Redhead","Redpoll","Ring-billed gull","Ring-necked duck","Ring-necked pheasant","Rock pigeon","Rock wren","Roseate spoonbill","Roseate tern","Ross's goose","Ross's gull","Rough-legged hawk","Royal tern","Ruby-crowned kinglet","Ruby-throated hummingbird","Ruddy duck","Ruddy turnstone","Ruff","Ruffed grouse","Rufous hummingbird","Rusty blackbird","Sabine's gull","Sanderling","Sandhill crane","Savannah sparrow","Say's phoebe","Scarlet tanager","Scissor-tailed flycatcher","Sedge wren","Semipalmated plover","Semipalmated sandpiper","Sharp-shinned hawk","Sharp-tailed sandpiper","Short-billed dowitcher","Short-billed gull","Short-eared owl","Slaty-backed gull","Smith's longspur","Snow bunting","Snow goose","Snowy egret","Snowy owl","Snowy plover","Solitary sandpiper","Song sparrow","Sooty tern","Sora","Spotted redshank","Spotted sandpiper","Spotted towhee","Sprague's pipit","Stilt sandpiper","Summer tanager","Surf scoter","Swainson's hawk","Swainson's thrush","Swainson's warbler","Swallow-tailed kite (extirpated)","Swamp sparrow","Tennessee warbler","Thick-billed murre","Townsend's solitaire","Townsend's warbler","Tree swallow","Tricolored heron","Tropical kingbird","Trumpeter swan","Tufted duck","Tufted titmouse","Tundra swan","Turkey vulture","Upland sandpiper","Varied thrush","Veery","Vermilion flycatcher","Vesper sparrow","Virginia rail","Virginia's warbler","Warbling vireo","Western flycatcher","Western grebe","Western kingbird","Western meadowlark","Western sandpiper","Western tanager","White ibis","White wagtail","White-breasted nuthatch","White-crowned sparrow","White-eyed vireo","White-faced ibis","White-rumped sandpiper","White-throated sparrow","White-throated swift","White-winged crossbill","White-winged dove","White-winged scoter","Whooping crane","Wild turkey","Willet","Willow flycatcher","Wilson's phalarope","Wilson's plover","Wilson's snipe","Wilson's warbler","Winter wren","Wood duck","Wood stork","Wood thrush","Worm-eating warbler","Yellow rail","Yellow warbler","Yellow-bellied flycatcher","Yellow-bellied sapsucker","Yellow-breasted chat","Yellow-crowned night heron","Yellow-headed blackbird","Yellow-rumped warbler","Yellow-throated vireo","Yellow-throated warbler"];
+const OHIO_BIRDS_LOWER = OHIO_BIRDS.map(b => b.toLowerCase());
+
+// ── AUTOCOMPLETE ───────────────────────────────────────────────────────────
+let suggestionIndex = -1;
+
+window.filterSuggestions = function() {
+  const val = document.getElementById('bird-species').value.trim().toLowerCase();
+  const box = document.getElementById('species-suggestions');
+  suggestionIndex = -1;
+  if (!val || val.length < 2) { box.classList.remove('open'); box.innerHTML = ''; return; }
+  const matches = OHIO_BIRDS.filter(b => b.toLowerCase().includes(val)).slice(0, 10);
+  if (!matches.length) { box.classList.remove('open'); box.innerHTML = ''; return; }
+  box.innerHTML = matches.map((b, i) =>
+    `<div class="suggestion-item" data-val="${esc(b)}" onmousedown="selectSuggestion('${esc(b)}')">${esc(b)}</div>`
+  ).join('');
+  box.classList.add('open');
+}
+
+window.selectSuggestion = function(val) {
+  document.getElementById('bird-species').value = val;
+  document.getElementById('species-suggestions').classList.remove('open');
+  document.getElementById('species-suggestions').innerHTML = '';
+  suggestionIndex = -1;
+}
+
+window.suggestionKeydown = function(e) {
+  const box = document.getElementById('species-suggestions');
+  const items = box.querySelectorAll('.suggestion-item');
+  if (!items.length) return;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    suggestionIndex = Math.min(suggestionIndex + 1, items.length - 1);
+    items.forEach((el, i) => el.classList.toggle('active', i === suggestionIndex));
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    suggestionIndex = Math.max(suggestionIndex - 1, -1);
+    items.forEach((el, i) => el.classList.toggle('active', i === suggestionIndex));
+  } else if (e.key === 'Enter' && suggestionIndex >= 0) {
+    e.preventDefault();
+    selectSuggestion(items[suggestionIndex].dataset.val);
+  } else if (e.key === 'Escape') {
+    box.classList.remove('open');
+  }
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#bird-species') && !e.target.closest('#species-suggestions')) {
+    const box = document.getElementById('species-suggestions');
+    if (box) box.classList.remove('open');
+  }
+});
+
+// ── DETECTION TOGGLE ───────────────────────────────────────────────────────
+let currentDetection = 'seen'; // 'seen' = 2pts, 'heard' = 1pt
+
+window.setDetection = function(type) {
+  currentDetection = type;
+  document.getElementById('btn-seen').classList.toggle('active', type === 'seen');
+  document.getElementById('btn-heard').classList.toggle('active', type === 'heard');
+}
+
+// ── ADD BIRD ───────────────────────────────────────────────────────────────
 window.addBird = async function() {
   const species = document.getElementById('bird-species').value.trim();
   const location = document.getElementById('bird-location').value.trim();
@@ -817,14 +914,55 @@ window.addBird = async function() {
 
   if (!species) { errEl.textContent = 'Enter a species name.'; return; }
 
+  // Check if on Ohio list
+  const onList = OHIO_BIRDS_LOWER.includes(species.toLowerCase());
+  if (!onList) {
+    const ok = confirm(`"${species}" isn't on the Ohio species list. Is the spelling correct?\n\nClick OK to log it anyway, or Cancel to go back and check.`);
+    if (!ok) return;
+  }
+
+  const score = currentDetection === 'seen' ? 2 : 1;
+  const detection = currentDetection;
+  const dateVal = date || new Date().toISOString().split('T')[0];
+
+  // Dedup: check if this species already exists with equal or higher score
+  const existingIdx = cachedBirds.findIndex(b => b.species.toLowerCase() === species.toLowerCase());
+  if (existingIdx >= 0) {
+    const existing = cachedBirds[existingIdx];
+    const existingScore = existing.score || 1;
+    if (existingScore >= score) {
+      errEl.textContent = `Already logged "${species}" with a higher or equal score (${existingScore === 2 ? 'Seen' : 'Heard'}). No update needed.`;
+      return;
+    }
+    // Upgrade existing entry to higher score
+    btn.disabled = true; btn.textContent = 'Updating…';
+    try {
+      await updateDoc(doc(db, 'users', currentUser, 'birds', existing.id), {
+        score, detection, location: location || existing.location,
+        note: note || existing.note, date: dateVal
+      });
+      cachedBirds[existingIdx] = { ...existing, score, detection, location: location || existing.location, note: note || existing.note, date: dateVal };
+      document.getElementById('bird-species').value = '';
+      document.getElementById('bird-location').value = '';
+      document.getElementById('bird-note').value = '';
+      document.getElementById('bird-date').valueAsDate = new Date();
+      errEl.style.color = '#7ec87e';
+      errEl.textContent = `"${species}" upgraded to Seen (2 pts).`;
+      setTimeout(() => { errEl.textContent = ''; errEl.style.color = ''; }, 3000);
+      renderBirdCards();
+    } catch(e) { errEl.textContent = 'Update failed.'; console.error(e); }
+    btn.disabled = false; btn.textContent = '+ Log this bird';
+    return;
+  }
+
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
     const ref = await addDoc(collection(db, 'users', currentUser, 'birds'), {
-      species, location, note,
-      date: date || new Date().toISOString().split('T')[0],
+      species, location, note, score, detection,
+      date: dateVal,
       addedAt: serverTimestamp()
     });
-    cachedBirds.unshift({ id: ref.id, species, location, note, date: date || new Date().toISOString().split('T')[0] });
+    cachedBirds.unshift({ id: ref.id, species, location, note, score, detection, date: dateVal });
     document.getElementById('bird-species').value = '';
     document.getElementById('bird-location').value = '';
     document.getElementById('bird-note').value = '';
@@ -849,10 +987,19 @@ async function renderProfiles() {
   const ranked = [];
   for (const [key, u] of Object.entries(allUsersCache)) {
     const snap = await getDocs(collection(db, 'users', key, 'birds'));
-    const count = [...new Set(snap.docs.map(d => d.data().species.toLowerCase()))].length;
-    ranked.push({ key, display: u.display, count });
+    const birds = snap.docs.map(d => d.data());
+    // Best score per species
+    const best = {};
+    birds.forEach(b => {
+      const k = b.species.toLowerCase();
+      const s = b.score || 1;
+      if (!best[k] || s > best[k]) best[k] = s;
+    });
+    const speciesCount = Object.keys(best).length;
+    const points = Object.values(best).reduce((a, b) => a + b, 0);
+    ranked.push({ key, display: u.display, speciesCount, points });
   }
-  ranked.sort((a, b) => b.count - a.count);
+  ranked.sort((a, b) => b.points - a.points);
 
   const lbEl = document.getElementById('leaderboard');
   if (!ranked.length) { lbEl.innerHTML = '<div class="empty-state">No members yet.</div>'; }
@@ -865,7 +1012,7 @@ async function renderProfiles() {
           <div class="lb-rank ${rc}">${i+1}</div>
           <div class="lb-avatar">${initials(u.display)}</div>
           <div class="lb-name">${esc(u.display)}${isYou ? '<span class="lb-you">you</span>' : ''}</div>
-          <div><span class="lb-count">${u.count}</span><span class="lb-unit"> sp.</span></div>
+          <div><span class="lb-count">${u.points}</span><span class="lb-unit"> pts</span></div>
         </div>`;
     }).join('');
   }
@@ -874,8 +1021,8 @@ async function renderProfiles() {
     <div class="profile-card" onclick="window.viewProfile('${u.key}')">
       <div class="profile-avatar-lg">${initials(u.display)}</div>
       <div class="profile-name">${esc(u.display)}</div>
-      <div class="profile-count">${u.count}</div>
-      <div class="profile-count-label">species</div>
+      <div class="profile-count">${u.points}</div>
+      <div class="profile-count-label">points · ${u.speciesCount} species</div>
     </div>`).join('');
 }
 
@@ -887,16 +1034,29 @@ window.viewProfile = async function(userKey) {
   const snap = await getDocs(collection(db, 'users', userKey, 'birds'));
   const birds = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   birds.sort((a, b) => (b.addedAt || '') > (a.addedAt || '') ? 1 : -1);
-  const uniqueCount = [...new Set(birds.map(b => b.species.toLowerCase()))].length;
+
+  const best = {};
+  birds.forEach(b => {
+    const k = b.species.toLowerCase();
+    const s = b.score || 1;
+    if (!best[k] || s > best[k]) best[k] = s;
+  });
+  const uniqueCount = Object.keys(best).length;
+  const totalPoints = Object.values(best).reduce((a, v) => a + v, 0);
   const isMe = userKey === currentUser;
 
-  const birdsHTML = birds.length ? birds.map(b => `
+  const birdsHTML = birds.length ? birds.map(b => {
+    const det = b.detection || (b.score === 2 ? 'seen' : 'heard');
+    const scoreLabel = det === 'seen' ? '👁 Seen · 2pts' : '👂 Heard · 1pt';
+    const scoreCls = det === 'seen' ? 'seen' : 'heard';
+    return `
     <div class="bird-card">
-      <div class="bird-name">🐦 ${esc(b.species)}</div>
+      <div class="bird-name">🐦 ${esc(b.species)} <span class="bird-score ${scoreCls}">${scoreLabel}</span></div>
       ${b.location ? `<div class="bird-location">📍 ${esc(b.location)}</div>` : ''}
       <div class="bird-date">${b.date || ''}</div>
       ${b.note ? `<div class="bird-note">${esc(b.note)}</div>` : ''}
-    </div>`).join('') :
+    </div>`;
+  }).join('') :
     '<div class="empty-state" style="grid-column:1/-1;">No birds logged yet.</div>';
 
   document.getElementById('profile-view-content').innerHTML = `
@@ -909,17 +1069,14 @@ window.viewProfile = async function(userKey) {
       </div>
     </div>
     <div class="stats-row">
+      <div class="stat-card"><div class="stat-num">${totalPoints}</div><div class="stat-label">Points</div></div>
       <div class="stat-card"><div class="stat-num">${uniqueCount}</div><div class="stat-label">Species</div></div>
       <div class="stat-card"><div class="stat-num">${birds.length}</div><div class="stat-label">Sightings</div></div>
     </div>
     ${isMe ? '<div style="text-align:right;margin-bottom:0.75rem;"><button class="btn-add-bird" onclick="showPage(\'birds\')">+ Add a bird</button></div>' : ''}
     <div class="section-label">Species list</div>
     <div class="birds-grid">${birdsHTML}</div>
-    <div class="photo-placeholder" style="margin-top:2rem;">
-      <div class="photo-placeholder-icon">📷</div>
-      <div class="photo-placeholder-title">Field photos · coming soon</div>
-      <div class="photo-placeholder-text">Photo uploads will be added here so you can attach shots to your sightings.</div>
-    </div>`;
+  `;
 
   showPage('profile-view');
 }
