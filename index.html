@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LaManna Big Year</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --forest: #1A2E1A;
+    --cream: #F5EDD6;
+    --bark: #5C3D1E;
+    --gold: #C8952A;
+    --mist: #EEF2EC;
+    --sage: #4A6741;
+    --rust: #8B3E2F;
+    --ink: #1E1E1A;
+    --pale-gold: #F0D898;
+    --radius: 4px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Source Sans 3', sans-serif;
+    background: var(--forest);
+    color: var(--cream);
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(200,149,42,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 100%, rgba(74,103,65,0.12) 0%, transparent 60%);
+  }
+
+  .page { display: none; min-height: 100vh; }
+  .page.active { display: flex; flex-direction: column; }
+
+  /* NAV */
+  nav {
+    background: rgba(26,46,26,0.95);
+    border-bottom: 1px solid rgba(200,149,42,0.3);
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(8px);
+  }
+
+  .nav-brand {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    color: var(--gold);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+  }
+
+  .nav-bird { font-size: 1.4rem; }
+
+  .nav-links { display: flex; gap: 0.25rem; align-items: center; }
+
+  .nav-link {
+    background: none;
+    border: none;
+    color: rgba(245,237,214,0.7);
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 0.4rem 0.75rem;
+    border-radius: var(--radius);
+    transition: all 0.15s;
+    letter-spacing: 0.03em;
+  }
+
+  .nav-link:hover { color: var(--cream); background: rgba(200,149,42,0.15); }
+  .nav-link.active { color: var(--gold); }
+
+  .nav-right { display: flex; align-items: center; gap: 0.75rem; }
+
+  .nav-user {
+    font-size: 0.8rem;
+    color: rgba(245,237,214,0.5);
+    font-style: italic;
+  }
+
+  .btn-logout {
+    background: none;
+    border: 1px solid rgba(200,149,42,0.4);
+    color: rgba(245,237,214,0.6);
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.75rem;
+    cursor: pointer;
+    padding: 0.3rem 0.6rem;
+    border-radius: var(--radius);
+    transition: all 0.15s;
+  }
+
+  .btn-logout:hover { border-color: var(--rust); color: var(--rust); }
+
+  /* CONTENT WRAPPER */
+  .content { flex: 1; padding: 2rem 1.5rem; max-width: 860px; width: 100%; margin: 0 auto; }
+
+  /* LOGIN PAGE */
+  .login-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+
+  .login-card {
+    background: rgba(245,237,214,0.04);
+    border: 1px solid rgba(200,149,42,0.3);
+    border-radius: 8px;
+    padding: 3rem 2.5rem;
+    width: 100%;
+    max-width: 380px;
+    text-align: center;
+  }
+
+  .login-hero { font-size: 3rem; margin-bottom: 1rem; }
+
+  .login-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem;
+    color: var(--gold);
+    margin-bottom: 0.25rem;
+  }
+
+  .login-subtitle {
+    font-size: 0.85rem;
+    color: rgba(245,237,214,0.5);
+    margin-bottom: 2rem;
+    font-style: italic;
+  }
+
+  .form-group { margin-bottom: 1rem; text-align: left; }
+
+  .form-label {
+    display: block;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    color: rgba(245,237,214,0.5);
+    margin-bottom: 0.4rem;
+    text-transform: uppercase;
+  }
+
+  .form-input {
+    width: 100%;
+    background: rgba(245,237,214,0.06);
+    border: 1px solid rgba(200,149,42,0.3);
+    border-radius: var(--radius);
+    padding: 0.65rem 0.85rem;
+    color: var(--cream);
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.95rem;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+
+  .form-input:focus { border-color: var(--gold); }
+  .form-input::placeholder { color: rgba(245,237,214,0.25); }
+
+  .btn-primary {
+    width: 100%;
+    background: var(--gold);
+    border: none;
+    border-radius: var(--radius);
+    padding: 0.75rem;
+    color: var(--forest);
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-top: 0.5rem;
+    letter-spacing: 0.02em;
+  }
+
+  .btn-primary:hover { background: var(--pale-gold); }
+  .btn-primary:active { transform: scale(0.99); }
+
+  .form-error {
+    color: #e07060;
+    font-size: 0.8rem;
+    margin-top: 0.75rem;
+    min-height: 1.2em;
+  }
+
+  .login-hint {
+    font-size: 0.75rem;
+    color: rgba(245,237,214,0.3);
+    margin-top: 1.5rem;
+    font-style: italic;
+  }
+
+  /* SECTION HEADERS */
+  .page-header { margin-bottom: 2rem; }
+
+  .page-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.7rem;
+    color: var(--gold);
+    margin-bottom: 0.25rem;
+  }
+
+  .page-subtitle {
+    font-size: 0.85rem;
+    color: rgba(245,237,214,0.45);
+    font-style: italic;
+  }
+
+  .section-rule {
+    border: none;
+    border-top: 1px solid rgba(200,149,42,0.2);
+    margin: 1.5rem 0;
+  }
+
+  /* STATS ROW */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    background: rgba(245,237,214,0.04);
+    border: 1px solid rgba(200,149,42,0.2);
+    border-radius: 6px;
+    padding: 1rem;
+    text-align: center;
+  }
+
+  .stat-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    color: var(--gold);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    color: rgba(245,237,214,0.4);
+    text-transform: uppercase;
+    margin-top: 0.25rem;
+  }
+
+  /* LEADERBOARD */
+  .leaderboard { margin-bottom: 2rem; }
+
+  .lb-row {
+    display: flex;
+    align-items: center;
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid rgba(200,149,42,0.1);
+    cursor: pointer;
+    border-radius: var(--radius);
+    transition: background 0.1s;
+    gap: 0.75rem;
+  }
+
+  .lb-row:hover { background: rgba(200,149,42,0.06); }
+
+  .lb-rank {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    color: rgba(200,149,42,0.4);
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .lb-rank.gold { color: var(--gold); }
+  .lb-rank.silver { color: #aaa; }
+  .lb-rank.bronze { color: #cd7f32; }
+
+  .lb-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--sage);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 0.9rem;
+    color: var(--cream);
+    flex-shrink: 0;
+    border: 1px solid rgba(200,149,42,0.3);
+  }
+
+  .lb-name { flex: 1; font-size: 0.95rem; }
+  .lb-you { font-size: 0.7rem; color: var(--gold); margin-left: 0.4rem; font-style: italic; }
+
+  .lb-count {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    color: var(--gold);
+  }
+
+  .lb-unit { font-size: 0.7rem; color: rgba(245,237,214,0.35); margin-left: 2px; }
+
+  /* MESSAGE BOARD */
+  .post-input-area {
+    background: rgba(245,237,214,0.04);
+    border: 1px solid rgba(200,149,42,0.25);
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .post-textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--cream);
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.95rem;
+    resize: none;
+    outline: none;
+    min-height: 60px;
+  }
+
+  .post-textarea::placeholder { color: rgba(245,237,214,0.25); font-style: italic; }
+
+  .post-footer {
+    display: flex;
+    justify-content: flex-end;
+    border-top: 1px solid rgba(200,149,42,0.15);
+    padding-top: 0.65rem;
+    margin-top: 0.65rem;
+  }
+
+  .btn-post {
+    background: rgba(200,149,42,0.15);
+    border: 1px solid rgba(200,149,42,0.4);
+    border-radius: var(--radius);
+    padding: 0.4rem 1rem;
+    color: var(--gold);
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-post:hover { background: rgba(200,149,42,0.25); }
+
+  .message-list { display: flex; flex-direction: column; gap: 0.75rem; }
+
+  .message-card {
+    background: rgba(245,237,214,0.035);
+    border: 1px solid rgba(200,149,42,0.15);
+    border-radius: 6px;
+    padding: 1rem 1.1rem;
+  }
+
+  .msg-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .msg-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--sage);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-family: 'Playfair Display', serif;
+    color: var(--cream);
+    flex-shrink: 0;
+  }
+
+  .msg-author { font-size: 0.85rem; font-weight: 600; color: var(--pale-gold); }
+  .msg-time { font-size: 0.72rem; color: rgba(245,237,214,0.3); margin-left: auto; }
+  .msg-text { font-size: 0.9rem; line-height: 1.55; color: rgba(245,237,214,0.85); }
+
+  .msg-delete {
+    background: none;
+    border: none;
+    color: rgba(200,149,42,0.2);
+    cursor: pointer;
+    font-size: 0.75rem;
+    padding: 0 0.25rem;
+    transition: color 0.15s;
+  }
+
+  .msg-delete:hover { color: var(--rust); }
+
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: rgba(245,237,214,0.3);
+    font-style: italic;
+    font-size: 0.9rem;
+  }
+
+  /* BIRD LOG */
+  .add-bird-form {
+    background: rgba(245,237,214,0.04);
+    border: 1px solid rgba(200,149,42,0.25);
+    border-radius: 6px;
+    padding: 1.25rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .add-bird-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .add-bird-note { grid-column: 1 / -1; }
+
+  .btn-add-bird {
+    background: rgba(74,103,65,0.4);
+    border: 1px solid rgba(74,103,65,0.7);
+    border-radius: var(--radius);
+    padding: 0.55rem 1.25rem;
+    color: #b8d4b0;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-add-bird:hover { background: rgba(74,103,65,0.6); }
+
+  .birds-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.6rem;
+  }
+
+  .bird-card {
+    background: rgba(245,237,214,0.04);
+    border: 1px solid rgba(200,149,42,0.15);
+    border-radius: 6px;
+    padding: 0.7rem 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    position: relative;
+  }
+
+  .bird-name { font-size: 0.9rem; font-weight: 600; color: var(--cream); }
+  .bird-date { font-size: 0.72rem; color: rgba(245,237,214,0.35); }
+  .bird-location { font-size: 0.75rem; color: rgba(200,149,42,0.7); }
+  .bird-note { font-size: 0.75rem; color: rgba(245,237,214,0.45); font-style: italic; margin-top: 0.15rem; }
+
+  .bird-del {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    color: rgba(200,149,42,0.2);
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: color 0.15s;
+  }
+
+  .bird-del:hover { color: var(--rust); }
+
+  /* PROFILES */
+  .profiles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .profile-card {
+    background: rgba(245,237,214,0.04);
+    border: 1px solid rgba(200,149,42,0.2);
+    border-radius: 6px;
+    padding: 1.25rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .profile-card:hover { background: rgba(200,149,42,0.08); border-color: rgba(200,149,42,0.4); }
+
+  .profile-avatar-lg {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--sage);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem;
+    color: var(--cream);
+    margin: 0 auto 0.6rem;
+    border: 2px solid rgba(200,149,42,0.3);
+  }
+
+  .profile-name { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.2rem; }
+  .profile-count { font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--gold); }
+  .profile-count-label { font-size: 0.65rem; color: rgba(245,237,214,0.35); text-transform: uppercase; letter-spacing: 0.06em; }
+
+  /* PROFILE VIEW */
+  .profile-hero {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    margin-bottom: 1.75rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(200,149,42,0.2);
+  }
+
+  .profile-avatar-xl {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    background: var(--sage);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    color: var(--cream);
+    border: 2px solid rgba(200,149,42,0.4);
+    flex-shrink: 0;
+  }
+
+  .profile-info-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    color: var(--gold);
+  }
+
+  .profile-info-sub { font-size: 0.8rem; color: rgba(245,237,214,0.4); font-style: italic; margin-top: 0.1rem; }
+
+  .back-btn {
+    background: none;
+    border: none;
+    color: rgba(200,149,42,0.6);
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.8rem;
+    cursor: pointer;
+    padding: 0;
+    margin-bottom: 1.25rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    transition: color 0.15s;
+  }
+
+  .back-btn:hover { color: var(--gold); }
+
+  /* PHOTO PLACEHOLDER */
+  .photo-placeholder {
+    background: rgba(245,237,214,0.03);
+    border: 2px dashed rgba(200,149,42,0.2);
+    border-radius: 8px;
+    padding: 3rem 2rem;
+    text-align: center;
+    margin-top: 1.5rem;
+  }
+
+  .photo-placeholder-icon { font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.4; }
+
+  .photo-placeholder-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    color: rgba(200,149,42,0.5);
+    margin-bottom: 0.5rem;
+  }
+
+  .photo-placeholder-text { font-size: 0.8rem; color: rgba(245,237,214,0.25); font-style: italic; }
+
+  /* SET PASSWORD PAGE */
+  .setpw-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+
+  .setpw-card {
+    background: rgba(245,237,214,0.04);
+    border: 1px solid rgba(200,149,42,0.3);
+    border-radius: 8px;
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 360px;
+    text-align: center;
+  }
+
+  .setpw-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    color: var(--gold);
+    margin-bottom: 0.5rem;
+  }
+
+  .setpw-sub { font-size: 0.85rem; color: rgba(245,237,214,0.45); margin-bottom: 2rem; font-style: italic; }
+
+  /* SEARCH */
+  .search-input {
+    width: 100%;
+    background: rgba(245,237,214,0.05);
+    border: 1px solid rgba(200,149,42,0.25);
+    border-radius: var(--radius);
+    padding: 0.55rem 0.85rem;
+    color: var(--cream);
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.15s;
+    margin-bottom: 1rem;
+  }
+
+  .search-input:focus { border-color: var(--gold); }
+  .search-input::placeholder { color: rgba(245,237,214,0.2); font-style: italic; }
+
+  /* TAG */
+  .tag {
+    display: inline-block;
+    font-size: 0.65rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.5rem;
+    border-radius: 2px;
+    background: rgba(74,103,65,0.25);
+    color: #b8d4b0;
+    border: 1px solid rgba(74,103,65,0.4);
+    margin-left: 0.35rem;
+  }
+
+  /* FOOTER */
+  .site-footer {
+    border-top: 1px solid rgba(200,149,42,0.15);
+    padding: 1rem 1.5rem;
+    text-align: center;
+    font-size: 0.72rem;
+    color: rgba(245,237,214,0.2);
+    font-style: italic;
+  }
+
+  /* Utility */
+  .mt-1 { margin-top: 0.5rem; }
+  .mt-2 { margin-top: 1rem; }
+  .mt-3 { margin-top: 1.5rem; }
+
+  .section-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(200,149,42,0.6);
+    margin-bottom: 0.75rem;
+  }
+
+  @media (max-width: 600px) {
+    nav { padding: 0 1rem; }
+    .content { padding: 1.25rem 1rem; }
+    .add-bird-grid { grid-template-columns: 1fr; }
+    .nav-user { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ====== LOGIN PAGE ====== -->
+<div id="page-login" class="page active">
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-hero">🦅</div>
+      <div class="login-title">LaManna Big Year</div>
+      <div class="login-subtitle">Family Bird Log · 2025</div>
+
+      <div class="form-group">
+        <label class="form-label">Your name</label>
+        <input id="login-username" class="form-input" type="text" placeholder="e.g. Mom, David, Jake…" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input id="login-password" class="form-input" type="password" placeholder="Password">
+      </div>
+      <button class="btn-primary" onclick="handleLogin()">Sign in</button>
+      <div id="login-error" class="form-error"></div>
+      <div class="login-hint">First time? Enter your name and use the family password to get started.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== SET PASSWORD PAGE ====== -->
+<div id="page-setpw" class="page">
+  <div class="setpw-wrap">
+    <div class="setpw-card">
+      <div style="font-size:2rem;margin-bottom:0.75rem;">🔒</div>
+      <div class="setpw-title">Choose your password</div>
+      <div class="setpw-sub">Pick something only you'll remember. You're in the family group — just keep it personal.</div>
+
+      <div class="form-group" style="text-align:left;">
+        <label class="form-label">New password</label>
+        <input id="setpw-new" class="form-input" type="password" placeholder="New password">
+      </div>
+      <div class="form-group" style="text-align:left;">
+        <label class="form-label">Confirm password</label>
+        <input id="setpw-confirm" class="form-input" type="password" placeholder="Confirm">
+      </div>
+      <button class="btn-primary" onclick="handleSetPassword()">Save and continue</button>
+      <div id="setpw-error" class="form-error"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== HOME / MESSAGE BOARD ====== -->
+<div id="page-home" class="page">
+  <nav>
+    <div class="nav-brand" onclick="showPage('home')">
+      <span class="nav-bird">🦅</span> Big Year
+    </div>
+    <div class="nav-links">
+      <button class="nav-link active" id="nav-board" onclick="showPage('home')">Board</button>
+      <button class="nav-link" id="nav-birds" onclick="showPage('birds')">My Birds</button>
+      <button class="nav-link" id="nav-profiles" onclick="showPage('profiles')">Family</button>
+    </div>
+    <div class="nav-right">
+      <span class="nav-user" id="nav-username"></span>
+      <button class="btn-logout" onclick="handleLogout()">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">Message Board</div>
+      <div class="page-subtitle">Share sightings, tips, and trash talk</div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="stats-row" id="home-stats"></div>
+
+    <hr class="section-rule">
+
+    <div class="section-label">Post a message</div>
+    <div class="post-input-area">
+      <textarea id="msg-text" class="post-textarea" placeholder="Spotted something? Got a tip? Talk bird…" rows="3"></textarea>
+      <div class="post-footer">
+        <button class="btn-post" onclick="postMessage()">Post →</button>
+      </div>
+    </div>
+
+    <div class="section-label">Latest posts</div>
+    <div class="message-list" id="message-list"></div>
+  </div>
+  <div class="site-footer">LaManna Family Big Year · Data stored in your browser</div>
+</div>
+
+<!-- ====== MY BIRDS PAGE ====== -->
+<div id="page-birds" class="page">
+  <nav>
+    <div class="nav-brand" onclick="showPage('home')">
+      <span class="nav-bird">🦅</span> Big Year
+    </div>
+    <div class="nav-links">
+      <button class="nav-link" id="nav-board2" onclick="showPage('home')">Board</button>
+      <button class="nav-link active" id="nav-birds2" onclick="showPage('birds')">My Birds</button>
+      <button class="nav-link" id="nav-profiles2" onclick="showPage('profiles')">Family</button>
+    </div>
+    <div class="nav-right">
+      <span class="nav-user" id="nav-username2"></span>
+      <button class="btn-logout" onclick="handleLogout()">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title" id="birds-title">My Birds</div>
+      <div class="page-subtitle" id="birds-subtitle">Your 2025 big year list</div>
+    </div>
+
+    <div class="add-bird-form" id="add-bird-section">
+      <div class="section-label">Log a bird</div>
+      <div class="add-bird-grid">
+        <div>
+          <label class="form-label">Species name</label>
+          <input id="bird-species" class="form-input" type="text" placeholder="e.g. American Robin">
+        </div>
+        <div>
+          <label class="form-label">Location</label>
+          <input id="bird-location" class="form-input" type="text" placeholder="e.g. Cuyahoga NP">
+        </div>
+        <div>
+          <label class="form-label">Date</label>
+          <input id="bird-date" class="form-input" type="date">
+        </div>
+        <div>
+          <label class="form-label">Note (optional)</label>
+          <input id="bird-note" class="form-input" type="text" placeholder="Anything memorable">
+        </div>
+      </div>
+      <button class="btn-add-bird" onclick="addBird()">+ Log this bird</button>
+      <div id="bird-error" class="form-error"></div>
+    </div>
+
+    <!-- Photo placeholder -->
+    <div class="photo-placeholder">
+      <div class="photo-placeholder-icon">📷</div>
+      <div class="photo-placeholder-title">Photo uploads coming soon</div>
+      <div class="photo-placeholder-text">This space is reserved for attaching field photos to your sightings.<br>Check back — it's on the list.</div>
+    </div>
+
+    <hr class="section-rule">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+      <div class="section-label" style="margin-bottom:0;">Your list · <span id="birds-count">0</span> species</div>
+    </div>
+
+    <input id="bird-search" class="search-input" type="text" placeholder="Filter species…" oninput="renderBirds()">
+
+    <div class="birds-grid" id="birds-grid"></div>
+  </div>
+  <div class="site-footer">LaManna Family Big Year · Data stored in your browser</div>
+</div>
+
+<!-- ====== FAMILY PROFILES PAGE ====== -->
+<div id="page-profiles" class="page">
+  <nav>
+    <div class="nav-brand" onclick="showPage('home')">
+      <span class="nav-bird">🦅</span> Big Year
+    </div>
+    <div class="nav-links">
+      <button class="nav-link" id="nav-board3" onclick="showPage('home')">Board</button>
+      <button class="nav-link" id="nav-birds3" onclick="showPage('birds')">My Birds</button>
+      <button class="nav-link active" id="nav-profiles3" onclick="showPage('profiles')">Family</button>
+    </div>
+    <div class="nav-right">
+      <span class="nav-user" id="nav-username3"></span>
+      <button class="btn-logout" onclick="handleLogout()">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">The Family</div>
+      <div class="page-subtitle">Click anyone to see their list</div>
+    </div>
+
+    <div class="section-label">Leaderboard</div>
+    <div class="leaderboard" id="leaderboard"></div>
+
+    <hr class="section-rule">
+
+    <div class="section-label">All members</div>
+    <div class="profiles-grid" id="profiles-grid"></div>
+  </div>
+  <div class="site-footer">LaManna Family Big Year · Data stored in your browser</div>
+</div>
+
+<!-- ====== SINGLE PROFILE VIEW PAGE ====== -->
+<div id="page-profile-view" class="page">
+  <nav>
+    <div class="nav-brand" onclick="showPage('home')">
+      <span class="nav-bird">🦅</span> Big Year
+    </div>
+    <div class="nav-links">
+      <button class="nav-link" onclick="showPage('home')">Board</button>
+      <button class="nav-link" onclick="showPage('birds')">My Birds</button>
+      <button class="nav-link" onclick="showPage('profiles')">Family</button>
+    </div>
+    <div class="nav-right">
+      <span class="nav-user" id="nav-username4"></span>
+      <button class="btn-logout" onclick="handleLogout()">Sign out</button>
+    </div>
+  </nav>
+
+  <div class="content" id="profile-view-content"></div>
+  <div class="site-footer">LaManna Family Big Year · Data stored in your browser</div>
+</div>
+
+<script>
+// ─── STORAGE HELPERS ───────────────────────────────────────────────────────
+const STORAGE_KEY = 'lamanna_bigyear_v1';
+
+function getData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : { users: {}, messages: [], birds: {} };
+  } catch { return { users: {}, messages: [], birds: {} }; }
+}
+
+function saveData(d) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
+}
+
+// ─── SESSION ───────────────────────────────────────────────────────────────
+let currentUser = sessionStorage.getItem('bigyear_user') || null;
+let pendingNewUser = null; // username being created, waiting for password set
+
+// ─── AUTH ──────────────────────────────────────────────────────────────────
+const FAMILY_PW = 'lamanna';
+
+function handleLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+
+  if (!username) { errEl.textContent = 'Enter your name.'; return; }
+  if (!password) { errEl.textContent = 'Enter a password.'; return; }
+
+  const data = getData();
+  const userKey = username.toLowerCase();
+
+  if (data.users[userKey]) {
+    // Existing user
+    if (data.users[userKey].password === password) {
+      currentUser = userKey;
+      sessionStorage.setItem('bigyear_user', userKey);
+      document.getElementById('login-username').value = '';
+      document.getElementById('login-password').value = '';
+      showPage('home');
+    } else {
+      errEl.textContent = 'Wrong password.';
+    }
+  } else {
+    // New user — must use family password
+    if (password === FAMILY_PW) {
+      pendingNewUser = { key: userKey, display: username };
+      showPage('setpw');
+    } else {
+      errEl.textContent = 'No account found. Use the family password to create one.';
+    }
+  }
+}
+
+function handleSetPassword() {
+  const pw1 = document.getElementById('setpw-new').value;
+  const pw2 = document.getElementById('setpw-confirm').value;
+  const errEl = document.getElementById('setpw-error');
+  errEl.textContent = '';
+
+  if (pw1.length < 4) { errEl.textContent = 'Password must be at least 4 characters.'; return; }
+  if (pw1 !== pw2) { errEl.textContent = 'Passwords don\'t match.'; return; }
+  if (pw1 === FAMILY_PW) { errEl.textContent = 'Choose something different from the family password.'; return; }
+
+  const data = getData();
+  data.users[pendingNewUser.key] = {
+    display: pendingNewUser.display,
+    password: pw1,
+    joined: new Date().toISOString()
+  };
+  if (!data.birds[pendingNewUser.key]) data.birds[pendingNewUser.key] = [];
+  saveData(data);
+
+  currentUser = pendingNewUser.key;
+  sessionStorage.setItem('bigyear_user', currentUser);
+  pendingNewUser = null;
+  document.getElementById('setpw-new').value = '';
+  document.getElementById('setpw-confirm').value = '';
+  showPage('home');
+}
+
+function handleLogout() {
+  currentUser = null;
+  sessionStorage.removeItem('bigyear_user');
+  showPage('login');
+}
+
+// ─── ROUTING ───────────────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + (name === 'profile-view' ? 'profile-view' : name)).classList.add('active');
+
+  if (name === 'login' || name === 'setpw') return;
+
+  // Update nav user labels
+  const data = getData();
+  const displayName = data.users[currentUser] ? data.users[currentUser].display : currentUser;
+  ['nav-username','nav-username2','nav-username3','nav-username4'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = displayName;
+  });
+
+  if (name === 'home') renderHome();
+  if (name === 'birds') renderBirdsPage(currentUser, true);
+  if (name === 'profiles') renderProfiles();
+}
+
+function viewProfile(userKey) {
+  renderProfileView(userKey);
+  showPage('profile-view');
+}
+
+// ─── HOME ──────────────────────────────────────────────────────────────────
+function renderHome() {
+  const data = getData();
+  const allBirds = data.birds || {};
+  let totalSpecies = 0;
+  let myCount = (allBirds[currentUser] || []).length;
+  let memberCount = Object.keys(data.users).length;
+  Object.values(allBirds).forEach(list => {
+    const names = [...new Set(list.map(b => b.species.toLowerCase()))];
+    totalSpecies += names.length;
+  });
+
+  document.getElementById('home-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${myCount}</div><div class="stat-label">My species</div></div>
+    <div class="stat-card"><div class="stat-num">${totalSpecies}</div><div class="stat-label">Family total</div></div>
+    <div class="stat-card"><div class="stat-num">${memberCount}</div><div class="stat-label">Members</div></div>
+    <div class="stat-card"><div class="stat-num">${new Date().getFullYear()}</div><div class="stat-label">Big Year</div></div>
+  `;
+
+  renderMessages();
+}
+
+function renderMessages() {
+  const data = getData();
+  const msgs = (data.messages || []).slice().reverse();
+  const listEl = document.getElementById('message-list');
+  if (!msgs.length) {
+    listEl.innerHTML = '<div class="empty-state">No posts yet — be the first to say something.</div>';
+    return;
+  }
+  listEl.innerHTML = msgs.map(m => {
+    const userDisplay = data.users[m.user] ? data.users[m.user].display : m.user;
+    const initials = userDisplay.slice(0,2).toUpperCase();
+    const isOwn = m.user === currentUser;
+    const delBtn = isOwn ? `<button class="msg-delete" onclick="deleteMessage('${m.id}')" title="Delete">✕</button>` : '';
+    return `
+      <div class="message-card" id="msg-${m.id}">
+        <div class="msg-header">
+          <div class="msg-avatar">${initials}</div>
+          <span class="msg-author">${userDisplay}</span>
+          <span class="msg-time">${formatTime(m.ts)}</span>
+          ${delBtn}
+        </div>
+        <div class="msg-text">${escapeHTML(m.text)}</div>
+      </div>`;
+  }).join('');
+}
+
+function postMessage() {
+  const text = document.getElementById('msg-text').value.trim();
+  if (!text) return;
+  const data = getData();
+  if (!data.messages) data.messages = [];
+  data.messages.push({ id: Date.now().toString(36), user: currentUser, text, ts: Date.now() });
+  saveData(data);
+  document.getElementById('msg-text').value = '';
+  renderMessages();
+  renderHome();
+}
+
+function deleteMessage(id) {
+  const data = getData();
+  data.messages = data.messages.filter(m => m.id !== id);
+  saveData(data);
+  renderMessages();
+}
+
+// ─── BIRDS ─────────────────────────────────────────────────────────────────
+let birdViewUser = null;
+let birdViewReadonly = false;
+
+function renderBirdsPage(userKey, isOwn) {
+  birdViewUser = userKey;
+  birdViewReadonly = !isOwn;
+
+  const data = getData();
+  const display = data.users[userKey] ? data.users[userKey].display : userKey;
+
+  document.getElementById('birds-title').textContent = isOwn ? 'My Birds' : display + '\'s Birds';
+  document.getElementById('birds-subtitle').textContent = isOwn ? 'Your 2025 big year list' : 'Their sightings this year';
+  document.getElementById('add-bird-section').style.display = isOwn ? '' : 'none';
+
+  if (!isOwn) {
+    // When viewing others we skip the search initially; still render it
+    document.getElementById('bird-search').value = '';
+  }
+
+  renderBirds();
+}
+
+function renderBirds() {
+  const data = getData();
+  const search = document.getElementById('bird-search').value.toLowerCase();
+  const list = (data.birds[birdViewUser] || []).slice().reverse();
+  const uniqueSpecies = [...new Set(list.map(b => b.species.toLowerCase()))].length;
+
+  document.getElementById('birds-count').textContent = uniqueSpecies;
+
+  const filtered = search ? list.filter(b =>
+    b.species.toLowerCase().includes(search) ||
+    (b.location || '').toLowerCase().includes(search)
+  ) : list;
+
+  const grid = document.getElementById('birds-grid');
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">' +
+      (search ? 'No matches.' : 'Nothing logged yet — get outside!') + '</div>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(b => {
+    const delBtn = !birdViewReadonly ? `<button class="bird-del" onclick="deleteBird('${b.id}')" title="Remove">✕</button>` : '';
+    return `
+      <div class="bird-card">
+        ${delBtn}
+        <div class="bird-name">🐦 ${escapeHTML(b.species)}</div>
+        ${b.location ? `<div class="bird-location">📍 ${escapeHTML(b.location)}</div>` : ''}
+        <div class="bird-date">${b.date || 'Date not recorded'}</div>
+        ${b.note ? `<div class="bird-note">${escapeHTML(b.note)}</div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function addBird() {
+  const species = document.getElementById('bird-species').value.trim();
+  const location = document.getElementById('bird-location').value.trim();
+  const date = document.getElementById('bird-date').value;
+  const note = document.getElementById('bird-note').value.trim();
+  const errEl = document.getElementById('bird-error');
+  errEl.textContent = '';
+
+  if (!species) { errEl.textContent = 'Enter a species name.'; return; }
+
+  const data = getData();
+  if (!data.birds[currentUser]) data.birds[currentUser] = [];
+
+  // Check for dup
+  const already = data.birds[currentUser].find(b => b.species.toLowerCase() === species.toLowerCase() && b.date === date);
+  if (already && date) {
+    errEl.textContent = 'Already logged that species on that date.';
+    return;
+  }
+
+  data.birds[currentUser].push({
+    id: Date.now().toString(36),
+    species,
+    location,
+    date: date || new Date().toISOString().split('T')[0],
+    note
+  });
+  saveData(data);
+
+  document.getElementById('bird-species').value = '';
+  document.getElementById('bird-location').value = '';
+  document.getElementById('bird-date').value = '';
+  document.getElementById('bird-note').value = '';
+  renderBirds();
+}
+
+function deleteBird(id) {
+  const data = getData();
+  data.birds[currentUser] = (data.birds[currentUser] || []).filter(b => b.id !== id);
+  saveData(data);
+  renderBirds();
+}
+
+// ─── PROFILES ──────────────────────────────────────────────────────────────
+function renderProfiles() {
+  const data = getData();
+  const users = Object.entries(data.users);
+
+  // Sort by species count
+  const ranked = users.map(([key, u]) => {
+    const count = [...new Set((data.birds[key] || []).map(b => b.species.toLowerCase()))].length;
+    return { key, display: u.display, count };
+  }).sort((a, b) => b.count - a.count);
+
+  // Leaderboard
+  const lbEl = document.getElementById('leaderboard');
+  lbEl.innerHTML = ranked.slice(0,10).map((u, i) => {
+    const rankClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+    const initials = u.display.slice(0,2).toUpperCase();
+    const isYou = u.key === currentUser;
+    return `
+      <div class="lb-row" onclick="viewProfile('${u.key}')">
+        <div class="lb-rank ${rankClass}">${i+1}</div>
+        <div class="lb-avatar">${initials}</div>
+        <div class="lb-name">${escapeHTML(u.display)}${isYou ? '<span class="lb-you">you</span>' : ''}</div>
+        <div><span class="lb-count">${u.count}</span><span class="lb-unit">sp.</span></div>
+      </div>`;
+  }).join('');
+
+  // Profile cards
+  const gridEl = document.getElementById('profiles-grid');
+  gridEl.innerHTML = ranked.map(u => {
+    const initials = u.display.slice(0,2).toUpperCase();
+    return `
+      <div class="profile-card" onclick="viewProfile('${u.key}')">
+        <div class="profile-avatar-lg">${initials}</div>
+        <div class="profile-name">${escapeHTML(u.display)}</div>
+        <div class="profile-count">${u.count}</div>
+        <div class="profile-count-label">species</div>
+      </div>`;
+  }).join('');
+}
+
+function renderProfileView(userKey) {
+  const data = getData();
+  const u = data.users[userKey];
+  if (!u) { showPage('profiles'); return; }
+
+  const display = u.display;
+  const initials = display.slice(0,2).toUpperCase();
+  const birds = data.birds[userKey] || [];
+  const uniqueCount = [...new Set(birds.map(b => b.species.toLowerCase()))].length;
+  const isMe = userKey === currentUser;
+
+  const birdsHTML = birds.length ? birds.slice().reverse().map(b => `
+    <div class="bird-card">
+      <div class="bird-name">🐦 ${escapeHTML(b.species)}</div>
+      ${b.location ? `<div class="bird-location">📍 ${escapeHTML(b.location)}</div>` : ''}
+      <div class="bird-date">${b.date || ''}</div>
+      ${b.note ? `<div class="bird-note">${escapeHTML(b.note)}</div>` : ''}
+    </div>`).join('') :
+    '<div class="empty-state" style="grid-column:1/-1;">No birds logged yet.</div>';
+
+  document.getElementById('profile-view-content').innerHTML = `
+    <button class="back-btn" onclick="showPage('profiles')">← Back to family</button>
+    <div class="profile-hero">
+      <div class="profile-avatar-xl">${initials}</div>
+      <div>
+        <div class="profile-info-name">${escapeHTML(display)}${isMe ? '<span class="tag">You</span>' : ''}</div>
+        <div class="profile-info-sub">Member since ${formatDate(u.joined)}</div>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-num">${uniqueCount}</div><div class="stat-label">Species</div></div>
+      <div class="stat-card"><div class="stat-num">${birds.length}</div><div class="stat-label">Sightings</div></div>
+    </div>
+    ${isMe ? '<div style="text-align:right;margin-bottom:0.75rem;"><button class="btn-add-bird" onclick="showPage(\'birds\')">+ Add a bird</button></div>' : ''}
+    <div class="section-label">Species list</div>
+    <div class="birds-grid">${birdsHTML}</div>
+
+    <div class="photo-placeholder" style="margin-top:2rem;">
+      <div class="photo-placeholder-icon">📷</div>
+      <div class="photo-placeholder-title">Field photos · coming soon</div>
+      <div class="photo-placeholder-text">Photo uploads will be added here so you can attach shots to your sightings.</div>
+    </div>
+  `;
+}
+
+// ─── UTILS ─────────────────────────────────────────────────────────────────
+function escapeHTML(str) {
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+function formatTime(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  const diff = (now - d) / 1000;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+}
+
+function formatDate(iso) {
+  if (!iso) return 'unknown';
+  return new Date(iso).toLocaleDateString('en-US', { month:'long', year:'numeric' });
+}
+
+// ─── KEYBOARD ──────────────────────────────────────────────────────────────
+document.getElementById('login-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleLogin();
+});
+document.getElementById('setpw-confirm').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleSetPassword();
+});
+document.getElementById('login-username').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('login-password').focus();
+});
+
+// ─── INIT ──────────────────────────────────────────────────────────────────
+(function init() {
+  // Set today as default bird date
+  document.getElementById('bird-date').valueAsDate = new Date();
+
+  if (currentUser) {
+    const data = getData();
+    if (data.users[currentUser]) {
+      showPage('home');
+    } else {
+      currentUser = null;
+      sessionStorage.removeItem('bigyear_user');
+    }
+  }
+})();
+</script>
+</body>
+</html>
