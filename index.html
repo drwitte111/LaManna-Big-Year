@@ -225,6 +225,22 @@
   .bird-score.seen { background: rgba(74,103,65,0.3); color: #b8d4b0; border: 1px solid rgba(74,103,65,0.5); }
   .bird-score.heard { background: rgba(92,61,30,0.4); color: #d4b896; border: 1px solid rgba(92,61,30,0.6); }
 
+  /* COUNTDOWN */
+  .cd-phase-label { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(200,149,42,0.6); margin-bottom: 0.75rem; }
+  .cd-title { font-family: 'Playfair Display', serif; font-size: 2rem; color: var(--gold); margin-bottom: 0.25rem; }
+  .cd-target-date { font-size: 0.82rem; color: rgba(245,237,214,0.35); margin-bottom: 2.5rem; font-style: italic; }
+  .cd-grid { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; }
+  .cd-unit { display: flex; flex-direction: column; align-items: center; }
+  .cd-num { font-family: 'Playfair Display', serif; font-size: 3.5rem; color: var(--cream); line-height: 1; min-width: 90px; background: rgba(245,237,214,0.05); border: 1px solid rgba(200,149,42,0.2); border-radius: 6px; padding: 0.5rem 0.25rem; text-align: center; }
+  .cd-label { font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(245,237,214,0.35); margin-top: 0.4rem; }
+  .cd-sep { font-family: 'Playfair Display', serif; font-size: 2.5rem; color: rgba(200,149,42,0.4); padding-bottom: 1.2rem; }
+  .cd-sub { font-size: 0.85rem; color: rgba(245,237,214,0.4); margin-bottom: 2.5rem; font-style: italic; max-width: 380px; line-height: 1.6; }
+  .cd-progress-wrap { width: 100%; max-width: 480px; }
+  .cd-progress-track { height: 6px; background: rgba(245,237,214,0.08); border-radius: 3px; overflow: hidden; margin-bottom: 0.5rem; }
+  .cd-progress-bar { height: 100%; background: var(--gold); border-radius: 3px; transition: width 1s linear; }
+  .cd-progress-labels { display: flex; justify-content: space-between; font-size: 0.68rem; color: rgba(245,237,214,0.3); }
+  .cd-ended { font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--gold); margin: 2rem 0 0.5rem; }
+
   /* PROFILE SETTINGS */
   .profile-settings-card { display: flex; align-items: center; gap: 1.25rem; padding: 1.25rem; background: rgba(245,237,214,0.04); border: 1px solid rgba(200,149,42,0.2); border-radius: 6px; margin-bottom: 1.5rem; }
   .profile-settings-avatar { width: 60px; height: 60px; border-radius: 50%; background: var(--sage); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--cream); border: 2px solid rgba(200,149,42,0.3); flex-shrink: 0; }
@@ -318,6 +334,7 @@
       <button class="nav-link active" onclick="showPage('home')">Board</button>
       <button class="nav-link" onclick="showPage('birds')">My Birds</button>
       <button class="nav-link" onclick="showPage('profiles')">Family</button>
+      <button class="nav-link" onclick="showPage('countdown')">Countdown</button>
       <button class="nav-link" onclick="showPage('myprofile')">My Profile</button>
     </div>
     <div class="nav-right">
@@ -353,6 +370,7 @@
       <button class="nav-link" onclick="showPage('home')">Board</button>
       <button class="nav-link active" onclick="showPage('birds')">My Birds</button>
       <button class="nav-link" onclick="showPage('profiles')">Family</button>
+      <button class="nav-link" onclick="showPage('countdown')">Countdown</button>
       <button class="nav-link" onclick="showPage('myprofile')">My Profile</button>
     </div>
     <div class="nav-right">
@@ -414,6 +432,7 @@
       <button class="nav-link" onclick="showPage('home')">Board</button>
       <button class="nav-link" onclick="showPage('birds')">My Birds</button>
       <button class="nav-link active" onclick="showPage('profiles')">Family</button>
+      <button class="nav-link" onclick="showPage('countdown')">Countdown</button>
       <button class="nav-link" onclick="showPage('myprofile')">My Profile</button>
     </div>
     <div class="nav-right">
@@ -443,6 +462,7 @@
       <button class="nav-link" onclick="showPage('home')">Board</button>
       <button class="nav-link" onclick="showPage('birds')">My Birds</button>
       <button class="nav-link" onclick="showPage('profiles')">Family</button>
+      <button class="nav-link" onclick="showPage('countdown')">Countdown</button>
       <button class="nav-link" onclick="showPage('myprofile')">My Profile</button>
     </div>
     <div class="nav-right">
@@ -462,6 +482,7 @@
       <button class="nav-link" onclick="showPage('home')">Board</button>
       <button class="nav-link" onclick="showPage('birds')">My Birds</button>
       <button class="nav-link" onclick="showPage('profiles')">Family</button>
+      <button class="nav-link" onclick="showPage('countdown')">Countdown</button>
       <button class="nav-link active" onclick="showPage('myprofile')">My Profile</button>
     </div>
     <div class="nav-right">
@@ -521,6 +542,44 @@
       <div class="settings-feedback" id="fb-password"></div>
     </div>
 
+  </div>
+  <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
+</div>
+
+<!-- COUNTDOWN PAGE -->
+<div id="page-countdown" class="page">
+  <nav>
+    <div class="nav-brand" onclick="showPage('home')"><span>🦅</span> Big Year</div>
+    <div class="nav-links">
+      <button class="nav-link" onclick="showPage('home')">Board</button>
+      <button class="nav-link" onclick="showPage('birds')">My Birds</button>
+      <button class="nav-link" onclick="showPage('profiles')">Family</button>
+      <button class="nav-link active" onclick="showPage('countdown')">Countdown</button>
+      <button class="nav-link" onclick="showPage('myprofile')">My Profile</button>
+    </div>
+    <div class="nav-right">
+      <span class="nav-user" id="nav-username6"></span>
+      <button class="btn-logout" onclick="handleLogout()">Sign out</button>
+    </div>
+  </nav>
+  <div class="content" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;text-align:center;">
+    <div id="cd-phase-label" class="cd-phase-label"></div>
+    <div id="cd-title" class="cd-title"></div>
+    <div id="cd-target-date" class="cd-target-date"></div>
+    <div class="cd-grid" id="cd-grid">
+      <div class="cd-unit"><div class="cd-num" id="cd-days">--</div><div class="cd-label">days</div></div>
+      <div class="cd-sep">:</div>
+      <div class="cd-unit"><div class="cd-num" id="cd-hours">--</div><div class="cd-label">hours</div></div>
+      <div class="cd-sep">:</div>
+      <div class="cd-unit"><div class="cd-num" id="cd-minutes">--</div><div class="cd-label">minutes</div></div>
+      <div class="cd-sep">:</div>
+      <div class="cd-unit"><div class="cd-num" id="cd-seconds">--</div><div class="cd-label">seconds</div></div>
+    </div>
+    <div id="cd-sub" class="cd-sub"></div>
+    <div id="cd-progress-wrap" class="cd-progress-wrap">
+      <div class="cd-progress-track"><div class="cd-progress-bar" id="cd-bar"></div></div>
+      <div class="cd-progress-labels"><span id="cd-prog-start"></span><span id="cd-prog-end"></span></div>
+    </div>
   </div>
   <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
 </div>
@@ -602,6 +661,7 @@ function hideLoading() {
 
 // ── Routing ────────────────────────────────────────────────────────────────
 window.showPage = function(name) {
+  if (cdInterval && name !== 'countdown') { clearInterval(cdInterval); cdInterval = null; }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pageId = name === 'profile-view' ? 'page-profile-view' : 'page-' + name;
   document.getElementById(pageId).classList.add('active');
@@ -611,7 +671,7 @@ window.showPage = function(name) {
 
   // sync nav username labels
   const display = allUsersCache[currentUser]?.display || currentUser || '';
-  ['nav-username','nav-username2','nav-username3','nav-username4','nav-username5'].forEach(id => {
+  ['nav-username','nav-username2','nav-username3','nav-username4','nav-username5','nav-username6'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.textContent = display;
   });
@@ -620,6 +680,7 @@ window.showPage = function(name) {
   if (name === 'birds') renderBirdsPage(currentUser, true);
   if (name === 'profiles') renderProfiles();
   if (name === 'myprofile') renderMyProfile();
+  if (name === 'countdown') renderCountdown();
 }
 
 // ── Auth ───────────────────────────────────────────────────────────────────
@@ -760,7 +821,7 @@ window.saveDisplayName = async function() {
     document.getElementById('myprofile-avatar').textContent = initials(val);
     document.getElementById('myprofile-meta').querySelector('.profile-settings-meta-name').textContent = val;
     // Update nav
-    ['nav-username','nav-username2','nav-username3','nav-username4','nav-username5'].forEach(id => {
+    ['nav-username','nav-username2','nav-username3','nav-username4','nav-username5','nav-username6'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.textContent = val;
     });
@@ -1010,6 +1071,92 @@ window.renderBirdCards = function() {
   }).join('');
 }
 
+// ── BIG YEAR DATES ─────────────────────────────────────────────────────────
+// 7/17/2026 12:00 AM EDT = UTC-4 → 04:00 UTC
+const BY_START = new Date('2026-07-17T04:00:00Z');
+// 7/10/2027 12:00 AM EDT = UTC-4 → 04:00 UTC
+const BY_END   = new Date('2027-07-10T04:00:00Z');
+
+function isBigYearActive() {
+  const now = Date.now();
+  return now >= BY_START.getTime() && now < BY_END.getTime();
+}
+
+let cdInterval = null;
+
+function renderCountdown() {
+  if (cdInterval) clearInterval(cdInterval);
+  tickCountdown();
+  cdInterval = setInterval(tickCountdown, 1000);
+}
+
+function tickCountdown() {
+  const now = Date.now();
+  const phaseEl   = document.getElementById('cd-phase-label');
+  const titleEl   = document.getElementById('cd-title');
+  const targetEl  = document.getElementById('cd-target-date');
+  const subEl     = document.getElementById('cd-sub');
+  const gridEl    = document.getElementById('cd-grid');
+  const barEl     = document.getElementById('cd-bar');
+  const progWrap  = document.getElementById('cd-progress-wrap');
+  const progStart = document.getElementById('cd-prog-start');
+  const progEnd   = document.getElementById('cd-prog-end');
+
+  if (!phaseEl) { clearInterval(cdInterval); return; }
+
+  if (now < BY_START.getTime()) {
+    // Pre-start: counting down to kick-off
+    const diff = BY_START.getTime() - now;
+    phaseEl.textContent = 'Big Year begins in';
+    titleEl.textContent = 'Get ready to watch';
+    targetEl.textContent = 'July 17, 2026 · 12:00 AM EDT';
+    subEl.textContent = 'The moment the clock hits midnight, bird entries open. May the best birder win.';
+    gridEl.style.display = 'flex';
+    setCountdownNums(diff);
+    progWrap.style.display = 'none';
+
+  } else if (now < BY_END.getTime()) {
+    // Active: Big Year in progress
+    const diff = BY_END.getTime() - now;
+    const total = BY_END.getTime() - BY_START.getTime();
+    const elapsed = now - BY_START.getTime();
+    const pct = Math.min(100, (elapsed / total) * 100);
+
+    phaseEl.textContent = 'Big Year in progress';
+    titleEl.textContent = 'Time remaining';
+    targetEl.textContent = 'Ends July 10, 2027 · 12:00 AM EDT';
+    subEl.textContent = 'Log every bird. Every point counts.';
+    gridEl.style.display = 'flex';
+    setCountdownNums(diff);
+    progWrap.style.display = 'block';
+    barEl.style.width = pct.toFixed(2) + '%';
+    progStart.textContent = 'Jul 17, 2026';
+    progEnd.textContent = 'Jul 10, 2027';
+
+  } else {
+    // Ended
+    clearInterval(cdInterval);
+    phaseEl.textContent = 'Big Year complete';
+    titleEl.textContent = '🏆 The count is final';
+    targetEl.textContent = 'Ended July 10, 2027 · 12:00 AM EDT';
+    subEl.textContent = 'Bird entries are closed. Check the leaderboard for the final standings.';
+    gridEl.style.display = 'none';
+    progWrap.style.display = 'none';
+  }
+}
+
+function setCountdownNums(ms) {
+  const s  = Math.floor(ms / 1000);
+  const d  = Math.floor(s / 86400);
+  const h  = Math.floor((s % 86400) / 3600);
+  const m  = Math.floor((s % 3600) / 60);
+  const sc = s % 60;
+  document.getElementById('cd-days').textContent    = String(d).padStart(2, '0');
+  document.getElementById('cd-hours').textContent   = String(h).padStart(2, '0');
+  document.getElementById('cd-minutes').textContent = String(m).padStart(2, '0');
+  document.getElementById('cd-seconds').textContent = String(sc).padStart(2, '0');
+}
+
 // ── OHIO BIRDS LIST ────────────────────────────────────────────────────────
 const OHIO_BIRDS = ["Acadian flycatcher","Alder flycatcher","Allen's hummingbird","American avocet","American barn owl","American bittern","American black duck","American coot","American flamingo","American golden-plover","American goldfinch","American goshawk","American kestrel","American pipit","American redstart","American robin","American tree sparrow","American white pelican","American woodcock","Ancient murrelet","Anhinga","Anna's hummingbird","Arctic loon","Arctic tern","Ash-throated flycatcher","Atlantic puffin","Baird's sandpiper","Baird's sparrow","Bald eagle","Baltimore oriole","Bank swallow","Barn swallow","Barred owl","Barrow's goldeneye","Bay-breasted warbler","Bell's vireo","Belted kingfisher","Bewick's wren","Black guillemot","Black rail","Black scoter","Black vulture","Black-and-white warbler","Black-backed woodpecker","Black-bellied plover","Black-bellied whistling-duck","Black-billed cuckoo","Black-billed magpie","Black-capped chickadee","Black-capped petrel","Black-chinned hummingbird","Black-crowned night heron","Black-headed grosbeak","Black-headed gull","Black-legged kittiwake","Black-necked stilt","Black-tailed gull","Black-throated blue warbler","Black-throated gray warbler","Black-throated green warbler","Black-throated sparrow","Blackburnian warbler","Blackpoll warbler","Blue grosbeak","Blue jay","Blue-gray gnatcatcher","Blue-headed vireo","Blue-winged teal","Blue-winged warbler","Bobolink","Bohemian waxwing","Boreal chickadee","Boreal owl","Brambling","Brant","Brewer's blackbird","Brewer's sparrow","Broad-billed hummingbird","Broad-winged hawk","Brown booby","Brown creeper","Brown pelican","Brown thrasher","Brown-headed cowbird","Brown-headed nuthatch","Bufflehead","Buff-breasted sandpiper","Burrowing owl","California gull","Calliope hummingbird","Canada goose","Canada warbler","Canvasback","Cape May warbler","Carolina chickadee","Carolina parakeet (extinct)","Carolina wren","Caspian tern","Cave swallow","Cedar waxwing","Cerulean warbler","Chestnut-collared longspur","Chestnut-sided warbler","Chimney swift","Chipping sparrow","Chuck-will's-widow","Cinnamon teal","Clay-colored sparrow","Cliff swallow","Common eider","Common gallinule","Common goldeneye","Common grackle","Common ground dove","Common gull","Common loon","Common merganser","Common nighthawk","Common raven","Common tern","Common yellowthroat","Connecticut warbler","Cooper's hawk","Crested caracara","Curlew sandpiper","Dark-eyed junco","Dickcissel","Double-crested cormorant","Downy woodpecker","Dunlin","Dusky flycatcher","Eared grebe","Eastern bluebird","Eastern kingbird","Eastern meadowlark","Eastern phoebe","Eastern screech-owl","Eastern towhee","Eastern whip-poor-will","Eastern wood-pewee","Eskimo curlew (possibly extinct)","Eurasian collared-dove","Eurasian tree sparrow","Eurasian wigeon","Eurasian woodcock","European starling","Evening grosbeak","Ferruginous hawk","Field sparrow","Fish crow","Forster's tern","Fox sparrow","Franklin's gull","Fulvous whistling-duck","Gadwall","Garganey","Glaucous gull","Glaucous-winged gull","Golden eagle","Golden-crowned kinglet","Golden-crowned sparrow","Golden-winged warbler","Grasshopper sparrow","Gray catbird","Gray flycatcher","Gray kingbird","Gray partridge (extirpated)","Gray-cheeked thrush","Gray-crowned rosy-finch","Great black-backed gull","Great blue heron","Great cormorant","Great crested flycatcher","Great egret","Great gray owl","Great horned owl","Great-tailed grackle","Greater prairie-chicken (extirpated)","Greater scaup","Greater white-fronted goose","Greater yellowlegs","Green heron","Green-tailed towhee","Green-winged teal","Groove-billed ani","Gyrfalcon","Hairy woodpecker","Harlequin duck","Harris's hawk","Harris's sparrow","Heermann's gull","Henslow's sparrow","Hermit thrush","Hooded merganser","Hooded oriole","Hooded warbler","Horned grebe","Horned lark","House finch","House sparrow","Hudsonian godwit","Iceland gull","Indigo bunting","Ivory gull","Ivory-billed woodpecker (possibly extinct)","Kentucky warbler","Killdeer","King eider","King rail","Kirtland's warbler","Lapland longspur","Large-billed tern","Lark bunting","Lark sparrow","Laughing gull","Lazuli bunting","Leach's storm-petrel","Least bittern","Least flycatcher","Least sandpiper","Least tern","LeConte's sparrow","Lesser black-backed gull","Lesser scaup","Lesser yellowlegs","Limpkin","Lincoln's sparrow","Little blue heron","Little gull","Loggerhead shrike","Long-billed curlew","Long-billed dowitcher","Long-billed murrelet","Long-eared owl","Long-tailed duck","Long-tailed jaeger","Louisiana waterthrush","Magnolia warbler","Magnificent frigatebird","Mallard","Marbled godwit","Marsh wren","Merlin","Mexican violetear","Mississippi kite","Mountain bluebird","Mourning dove","Mourning warbler","Mute swan","Nashville warbler","Nelson's sparrow","Neotropic cormorant","Northern bobwhite","Northern cardinal","Northern flicker","Northern gannet","Northern harrier","Northern hawk owl","Northern house wren","Northern lapwing","Northern mockingbird","Northern parula","Northern pintail","Northern rough-winged swallow","Northern saw-whet owl","Northern shoveler","Northern shrike","Northern waterthrush","Northern wheatear","Olive-sided flycatcher","Orange-crowned warbler","Orchard oriole","Osprey","Ovenbird","Palm warbler","Parasitic jaeger","Passenger pigeon (extinct)","Pectoral sandpiper","Peregrine falcon","Philadelphia vireo","Piping plover","Pileated woodpecker","Pied-billed grebe","Pine grosbeak","Pine siskin","Pine warbler","Painted bunting","Painted redstart","Pomarine jaeger","Prairie falcon","Prairie warbler","Prothonotary warbler","Purple finch","Purple gallinule","Purple martin","Purple sandpiper","Red crossbill","Red knot","Red phalarope","Red-bellied woodpecker","Red-breasted merganser","Red-breasted nuthatch","Red-cockaded woodpecker","Red-eyed vireo","Red-headed woodpecker","Red-naped sapsucker","Red-necked grebe","Red-necked phalarope","Red-necked stint","Red-shouldered hawk","Red-tailed hawk","Red-throated loon","Red-winged blackbird","Reddish egret","Redhead","Redpoll","Ring-billed gull","Ring-necked duck","Ring-necked pheasant","Rock pigeon","Rock wren","Roseate spoonbill","Roseate tern","Ross's goose","Ross's gull","Rough-legged hawk","Royal tern","Ruby-crowned kinglet","Ruby-throated hummingbird","Ruddy duck","Ruddy turnstone","Ruff","Ruffed grouse","Rufous hummingbird","Rusty blackbird","Sabine's gull","Sanderling","Sandhill crane","Savannah sparrow","Say's phoebe","Scarlet tanager","Scissor-tailed flycatcher","Sedge wren","Semipalmated plover","Semipalmated sandpiper","Sharp-shinned hawk","Sharp-tailed sandpiper","Short-billed dowitcher","Short-billed gull","Short-eared owl","Slaty-backed gull","Smith's longspur","Snow bunting","Snow goose","Snowy egret","Snowy owl","Snowy plover","Solitary sandpiper","Song sparrow","Sooty tern","Sora","Spotted redshank","Spotted sandpiper","Spotted towhee","Sprague's pipit","Stilt sandpiper","Summer tanager","Surf scoter","Swainson's hawk","Swainson's thrush","Swainson's warbler","Swallow-tailed kite (extirpated)","Swamp sparrow","Tennessee warbler","Thick-billed murre","Townsend's solitaire","Townsend's warbler","Tree swallow","Tricolored heron","Tropical kingbird","Trumpeter swan","Tufted duck","Tufted titmouse","Tundra swan","Turkey vulture","Upland sandpiper","Varied thrush","Veery","Vermilion flycatcher","Vesper sparrow","Virginia rail","Virginia's warbler","Warbling vireo","Western flycatcher","Western grebe","Western kingbird","Western meadowlark","Western sandpiper","Western tanager","White ibis","White wagtail","White-breasted nuthatch","White-crowned sparrow","White-eyed vireo","White-faced ibis","White-rumped sandpiper","White-throated sparrow","White-throated swift","White-winged crossbill","White-winged dove","White-winged scoter","Whooping crane","Wild turkey","Willet","Willow flycatcher","Wilson's phalarope","Wilson's plover","Wilson's snipe","Wilson's warbler","Winter wren","Wood duck","Wood stork","Wood thrush","Worm-eating warbler","Yellow rail","Yellow warbler","Yellow-bellied flycatcher","Yellow-bellied sapsucker","Yellow-breasted chat","Yellow-crowned night heron","Yellow-headed blackbird","Yellow-rumped warbler","Yellow-throated vireo","Yellow-throated warbler"];
 const OHIO_BIRDS_LOWER = OHIO_BIRDS.map(b => b.toLowerCase());
@@ -1084,6 +1231,16 @@ window.addBird = async function() {
   errEl.textContent = '';
 
   if (!species) { errEl.textContent = 'Enter a species name.'; return; }
+
+  if (!isBigYearActive()) {
+    const now = Date.now();
+    if (now < BY_START.getTime()) {
+      errEl.textContent = 'The Big Year hasn\'t started yet. Entries open July 17, 2026 at midnight EDT.';
+    } else {
+      errEl.textContent = 'The Big Year has ended. No new entries can be added.';
+    }
+    return;
+  }
 
   // Check if on Ohio list
   const onList = OHIO_BIRDS_LOWER.includes(species.toLowerCase());
