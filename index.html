@@ -616,38 +616,197 @@
   <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
 </div>
 
-<!-- SCORES CHART PAGE -->
-<div id="page-chart" class="page">
-  <nav>
-    <div class="nav-brand" onclick="showPage('home')"><span>🦅</span> Big Year</div>
-    <div class="nav-links">
-      <button class="nav-link" onclick="showPage('home')">Board</button>
-      <button class="nav-link" onclick="showPage('birds')">My Birds</button>
-      <button class="nav-link" onclick="showPage('profiles')">Family</button>
-      <button class="nav-link active" onclick="showPage('chart')">Scores</button>
-      <button class="nav-link" onclick="showPage('map')">Map</button>
-      <button class="nav-link" onclick="showPage('countdown')">Countdown</button>
-      <button class="nav-link" onclick="showPage('myprofile')">My Profile</button>
-    </div>
-    <div class="nav-right">
-      <span class="nav-user" id="nav-username7"></span>
-      <button class="btn-logout" onclick="handleLogout()">Sign out</button>
-    </div>
-  </nav>
-  <div class="content">
-    <div class="page-header">
-      <div class="page-title">Score History</div>
-      <div class="page-subtitle">Cumulative points over time</div>
-    </div>
-    <div id="chart-filter-row" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1.5rem;"></div>
-    <div style="position:relative;width:100%;background:rgba(245,237,214,0.03);border:1px solid rgba(200,149,42,0.15);border-radius:6px;padding:1rem;">
-      <canvas id="scores-chart" style="width:100%;"></canvas>
-      <div id="chart-empty" class="empty-state" style="display:none;">No bird data yet — log some birds first.</div>
-    </div>
-  </div>
-  <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
-</div>
+// ── SCORES CHART ────────────────────────────────────────────────────────────
+const CHART_COLORS = [
+  '#C8952A','#7ec87e','#7ab8e8','#e07060','#b89adf',
+  '#e8c46a','#60b8a8','#e88a7a','#a8c870','#9ab0d8'
+];
 
+let scoresChartInstance = null;
+let chartActiveUsers = new Set();
+let chartAllData = {}; // { userKey: [ {date, pts} ] }
+
+async function renderScoresChart() {
+  const filterRow = document.getElementById('chart-filter-row');
+  const emptyEl   = document.getElementById('chart-empty');
+  filterRow.innerHTML = '<span style="font-size:0.8rem;color:rgba(245,237,214,0.3);font-style:italic;">Loading…</span>';
+
+  await loadAllUsers();
+
+  // Fetch all users' birds
+  chartAllData = {};
+  for (const [key, u] of Object.entries(allUsersCache)) {
+    if (key === '__admin__') continue;
+    const snap = await getDocs(collection(db, 'users', key, 'birds'));
+    const birds = snap.docs.map(d => d.data()).filter(b => b.date);
+    chartAllData[key] = birds;
+  }
+
+  const userKeys = Object.keys(chartAllData);
+  if (!userKeys.length) {
+    filterRow.innerHTML = '';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  emptyEl.style.display = 'none';
+
+  // Default: all users visible
+  if (!chartActiveUsers.size || ![...chartActiveUsers].some(k => userKeys.includes(k))) {
+    chartActiveUsers = new Set(userKeys);
+  }
+
+  buildFilterButtons(userKeys);
+  drawChart();
+}
+
+function buildFilterButtons(userKeys) {
+  const filterRow = document.getElementById('chart-filter-row');
+  filterRow.innerHTML = userKeys.map((key, i) => {
+    const display = allUsersCache[key]?.display || key;
+    const color = CHART_COLORS[i % CHART_COLORS.length];
+    const active = chartActiveUsers.has(key);
+    return `<button
+      class="chart-filter-btn ${active ? 'active' : ''}"
+      id="cfbtn-${key}"
+      style="--cbtn-color:${color};"
+      onclick="toggleChartUser('${key}')"
+    >${escHTML(display)}</button>`;
+  }).join('');
+}
+
+function escHTML(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+window.toggleChartUser = function(key) {
+  if (chartActiveUsers.has(key)) {
+    if (chartActiveUsers.size === 1) return; // keep at least 1
+    chartActiveUsers.delete(key);
+  } else {
+    chartActiveUsers.add(key);
+  }
+  const btn = document.getElementById('cfbtn-' + key);
+  if (btn) btn.classList.toggle('active', chartActiveUsers.has(key));
+  drawChart();
+};
+
+function buildTimeline(birds) {
+  if (!birds.length) return [];
+  const byDate = {};
+  birds.forEach(b => {
+    const d = b.date;
+    if (!byDate[d]) byDate[d] = [];
+    byDate[d].push(b);
+  });
+
+  const sortedDates = Object.keys(byDate).sort();
+  const bestPerSpecies = {};
+  const points = [];
+
+  sortedDates.forEach(date => {
+    byDate[date].forEach(b => {
+      const key = b.species.toLowerCase();
+      const s = b.score || 1;
+      if (!bestPerSpecies[key] || s > bestPerSpecies[key]) {
+        bestPerSpecies[key] = s;
+      }
+    });
+    const total = Object.values(bestPerSpecies).reduce((a, v) => a + v, 0);
+    points.push({ date, pts: total });
+  });
+
+  return points;
+}
+
+function drawChart() {
+  const canvas = document.getElementById('scores-chart');
+  if (!canvas) return;
+
+  const allDates = new Set();
+  const userKeys = [...chartActiveUsers];
+
+  userKeys.forEach(key => {
+    (chartAllData[key] || []).forEach(b => { if (b.date) allDates.add(b.date); });
+  });
+
+  if (!allDates.size) return;
+
+  const sortedDates = [...allDates].sort();
+  const today = new Date().toISOString().split('T')[0];
+  if (!allDates.has(today)) sortedDates.push(today);
+
+  const datasets = userKeys.map((key, i) => {
+    const timeline = buildTimeline(chartAllData[key] || []);
+    const color = CHART_COLORS[i % CHART_COLORS.length];
+
+    let lastPts = 0;
+    const data = sortedDates.map(date => {
+      const entry = timeline.find(t => t.date === date);
+      if (entry) lastPts = entry.pts;
+      const firstDate = timeline[0]?.date;
+      if (!firstDate || date < firstDate) return null;
+      return lastPts;
+    });
+
+    return {
+      label: allUsersCache[key]?.display || key,
+      data,
+      borderColor: color,
+      backgroundColor: color + '22',
+      borderWidth: 2.5,
+      pointRadius: 3,
+      pointHoverRadius: 6,
+      tension: 0.3,
+      fill: false,
+      spanGaps: false,
+    };
+  });
+
+  if (scoresChartInstance) scoresChartInstance.destroy();
+
+  scoresChartInstance = new Chart(canvas, {
+    type: 'line',
+    data: { labels: sortedDates, datasets },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1e3520',
+          borderColor: 'rgba(200,149,42,0.4)',
+          borderWidth: 1,
+          titleColor: '#C8952A',
+          bodyColor: '#F5EDD6',
+          padding: 10,
+          callbacks: {
+            title: items => items[0].label,
+            label: item => ` ${item.dataset.label}: ${item.parsed.y} pts`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: 'rgba(245,237,214,0.4)', font: { size: 11 }, maxTicksLimit: 12, maxRotation: 30 },
+          grid: { color: 'rgba(245,237,214,0.05)' },
+          border: { color: 'rgba(200,149,42,0.2)' }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { color: 'rgba(245,237,214,0.4)', font: { size: 11 }, stepSize: 1 },
+          grid: { color: 'rgba(245,237,214,0.08)' },
+          border: { color: 'rgba(200,149,42,0.2)' },
+          title: {
+            display: true,
+            text: 'Cumulative Points',
+            color: 'rgba(200,149,42,0.5)',
+            font: { size: 11 }
+          }
+        }
+      }
+    }
+  });
+}
 <!-- MAP PAGE -->
 <div id="page-map" class="page">
   <nav>
