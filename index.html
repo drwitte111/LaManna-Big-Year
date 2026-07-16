@@ -213,6 +213,22 @@
   .tag { display: inline-block; font-size: 0.65rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 0.15rem 0.5rem; border-radius: 2px; background: rgba(74,103,65,0.25); color: #b8d4b0; border: 1px solid rgba(74,103,65,0.4); margin-left: 0.35rem; }
   .site-footer { border-top: 1px solid rgba(200,149,42,0.15); padding: 1rem 1.5rem; text-align: center; font-size: 0.72rem; color: rgba(245,237,214,0.2); font-style: italic; }
 
+  /* ADMIN */
+  .admin-user-card { background: rgba(245,237,214,0.04); border: 1px solid rgba(200,149,42,0.2); border-radius: 6px; padding: 1rem 1.1rem; margin-bottom: 0.75rem; }
+  .admin-user-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+  .admin-user-name { font-size: 1rem; font-weight: 600; flex: 1; }
+  .admin-user-key { font-size: 0.72rem; color: rgba(245,237,214,0.3); font-family: monospace; }
+  .admin-actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+  .admin-pw-input { background: rgba(245,237,214,0.06); border: 1px solid rgba(200,149,42,0.3); border-radius: var(--radius); padding: 0.4rem 0.65rem; color: var(--cream); font-family: 'Source Sans 3', sans-serif; font-size: 0.85rem; outline: none; width: 180px; }
+  .admin-pw-input:focus { border-color: var(--gold); }
+  .btn-admin-save { background: rgba(200,149,42,0.15); border: 1px solid rgba(200,149,42,0.4); border-radius: var(--radius); padding: 0.4rem 0.8rem; color: var(--gold); font-family: 'Source Sans 3', sans-serif; font-size: 0.8rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .btn-admin-save:hover { background: rgba(200,149,42,0.25); }
+  .btn-admin-delete { background: rgba(139,62,47,0.15); border: 1px solid rgba(139,62,47,0.4); border-radius: var(--radius); padding: 0.4rem 0.8rem; color: #e07060; font-family: 'Source Sans 3', sans-serif; font-size: 0.8rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .btn-admin-delete:hover { background: rgba(139,62,47,0.3); }
+  .admin-feedback { font-size: 0.75rem; color: #7ec87e; margin-top: 0.4rem; min-height: 1em; }
+  .admin-current-pw { font-size: 0.75rem; color: rgba(245,237,214,0.35); margin-top: 0.2rem; }
+  .admin-bird-count { font-size: 0.75rem; color: rgba(200,149,42,0.6); }
+
   @media (max-width: 600px) {
     nav { padding: 0 1rem; }
     .content { padding: 1.25rem 1rem; }
@@ -408,6 +424,24 @@
   <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
 </div>
 
+<!-- ADMIN PAGE -->
+<div id="page-admin" class="page">
+  <nav>
+    <div class="nav-brand"><span>🦅</span> Big Year <span style="font-size:0.7rem;color:var(--rust);margin-left:0.5rem;font-family:'Source Sans 3',sans-serif;">ADMIN</span></div>
+    <div class="nav-right">
+      <button class="btn-logout" onclick="handleLogout()">Sign out</button>
+    </div>
+  </nav>
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">Admin Panel</div>
+      <div class="page-subtitle">Manage family accounts</div>
+    </div>
+    <div id="admin-user-list"></div>
+  </div>
+  <div class="site-footer">LaManna Family Big Year · Admin</div>
+</div>
+
 <!-- FIREBASE -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
@@ -430,6 +464,8 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 const FAMILY_PW = 'lamanna';
+const ADMIN_USER = 'admin';
+const ADMIN_PW = 'lamannabigyear';
 
 // ── State ──────────────────────────────────────────────────────────────────
 let currentUser = sessionStorage.getItem('bigyear_user') || null;
@@ -470,6 +506,7 @@ window.showPage = function(name) {
   document.getElementById(pageId).classList.add('active');
 
   if (name === 'login' || name === 'setpw') return;
+  if (name === 'admin') { renderAdmin(); return; }
 
   // sync nav username labels
   const display = allUsersCache[currentUser]?.display || currentUser || '';
@@ -492,6 +529,16 @@ window.handleLogin = async function() {
   errEl.textContent = '';
   if (!username) { errEl.textContent = 'Enter your name.'; return; }
   if (!password) { errEl.textContent = 'Enter a password.'; return; }
+
+  // Admin shortcut — never touches Firestore
+  if (username.toLowerCase() === ADMIN_USER && password === ADMIN_PW) {
+    currentUser = '__admin__';
+    sessionStorage.setItem('bigyear_user', '__admin__');
+    document.getElementById('login-username').value = '';
+    document.getElementById('login-password').value = '';
+    showPage('admin');
+    return;
+  }
 
   btn.disabled = true; btn.textContent = 'Checking…';
 
@@ -567,6 +614,74 @@ window.handleLogout = function() {
   showPage('login');
 }
 
+// ── ADMIN ──────────────────────────────────────────────────────────────────
+async function renderAdmin() {
+  const listEl = document.getElementById('admin-user-list');
+  listEl.innerHTML = '<div class="empty-state">Loading accounts…</div>';
+
+  const snap = await getDocs(collection(db, 'users'));
+  if (snap.empty) { listEl.innerHTML = '<div class="empty-state">No accounts yet.</div>'; return; }
+
+  const rows = await Promise.all(snap.docs.map(async d => {
+    const u = d.data();
+    const bSnap = await getDocs(collection(db, 'users', d.id, 'birds'));
+    const bCount = [...new Set(bSnap.docs.map(b => b.data().species.toLowerCase()))].length;
+    return { id: d.id, display: u.display, password: u.password, bCount };
+  }));
+
+  rows.sort((a, b) => a.display.localeCompare(b.display));
+
+  listEl.innerHTML = rows.map(u => `
+    <div class="admin-user-card" id="acard-${u.id}">
+      <div class="admin-user-header">
+        <div class="lb-avatar">${initials(u.display)}</div>
+        <div>
+          <div class="admin-user-name">${esc(u.display)}</div>
+          <div class="admin-user-key">${esc(u.id)} · <span class="admin-bird-count">${u.bCount} species</span></div>
+          <div class="admin-current-pw">Current password: <code style="color:var(--pale-gold)">${esc(u.password)}</code></div>
+        </div>
+      </div>
+      <div class="admin-actions">
+        <input class="admin-pw-input" id="pw-${u.id}" type="text" placeholder="New password…">
+        <button class="btn-admin-save" onclick="adminResetPw('${u.id}')">Reset password</button>
+        <button class="btn-admin-delete" onclick="adminDeleteUser('${u.id}', '${esc(u.display)}')">Delete account</button>
+      </div>
+      <div class="admin-feedback" id="afb-${u.id}"></div>
+    </div>`).join('');
+}
+
+window.adminResetPw = async function(userKey) {
+  const input = document.getElementById('pw-' + userKey);
+  const fb = document.getElementById('afb-' + userKey);
+  const newPw = input.value.trim();
+  if (!newPw || newPw.length < 4) { fb.style.color = '#e07060'; fb.textContent = 'Password must be at least 4 characters.'; return; }
+  if (newPw === FAMILY_PW) { fb.style.color = '#e07060'; fb.textContent = "Can't reuse the family password."; return; }
+  try {
+    await updateDoc(doc(db, 'users', userKey), { password: newPw });
+    input.value = '';
+    fb.style.color = '#7ec87e';
+    fb.textContent = 'Password updated.';
+    // Refresh display
+    const card = document.getElementById('acard-' + userKey);
+    const pwEl = card.querySelector('.admin-current-pw code');
+    if (pwEl) pwEl.textContent = newPw;
+    setTimeout(() => { fb.textContent = ''; }, 3000);
+  } catch(e) { fb.style.color = '#e07060'; fb.textContent = 'Update failed.'; console.error(e); }
+}
+
+window.adminDeleteUser = async function(userKey, displayName) {
+  if (!confirm(`Delete ${displayName}'s account and all their birds? This cannot be undone.`)) return;
+  const fb = document.getElementById('afb-' + userKey);
+  try {
+    // Delete all birds first
+    const bSnap = await getDocs(collection(db, 'users', userKey, 'birds'));
+    await Promise.all(bSnap.docs.map(d => deleteDoc(doc(db, 'users', userKey, 'birds', d.id))));
+    // Delete user doc
+    await deleteDoc(doc(db, 'users', userKey));
+    document.getElementById('acard-' + userKey).remove();
+  } catch(e) { fb.style.color = '#e07060'; fb.textContent = 'Delete failed.'; console.error(e); }
+}
+
 // ── Load all users (for leaderboard / profiles) ────────────────────────────
 async function loadAllUsers() {
   const snap = await getDocs(collection(db, 'users'));
@@ -608,7 +723,7 @@ async function renderHome() {
     listEl.innerHTML = snap.docs.map(d => {
       const m = d.data();
       const userDisplay = allUsersCache[m.user]?.display || m.user;
-      const isOwn = m.user === currentUser;
+      const isOwn = m.user === currentUser || currentUser === '__admin__';
       const delBtn = isOwn ? `<button class="msg-delete" onclick="window.deleteMessage('${d.id}')" title="Delete">✕</button>` : '';
       return `
         <div class="message-card">
@@ -819,6 +934,11 @@ document.getElementById('setpw-confirm').addEventListener('keydown', e => { if (
   document.getElementById('bird-date').valueAsDate = new Date();
 
   if (currentUser) {
+    if (currentUser === '__admin__') {
+      hideLoading();
+      showPage('admin');
+      return;
+    }
     try {
       const snap = await getDoc(doc(db, 'users', currentUser));
       if (snap.exists()) {
