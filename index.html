@@ -890,9 +890,10 @@ async function renderAdmin() {
 
   // Populate date inputs with current BY_START/BY_END in EDT local time
   function toLocalInput(utcDate) {
-    // Convert UTC to EDT (UTC-4) for display in datetime-local input
+    // UTC → EDT: subtract 4 hours, then format as YYYY-MM-DDTHH:MM
     const edt = new Date(utcDate.getTime() - 4 * 60 * 60 * 1000);
-    return edt.toISOString().slice(0, 16);
+    const pad = n => String(n).padStart(2, '0');
+    return `${edt.getUTCFullYear()}-${pad(edt.getUTCMonth()+1)}-${pad(edt.getUTCDate())}T${pad(edt.getUTCHours())}:${pad(edt.getUTCMinutes())}`;
   }
   document.getElementById('admin-by-start').value = toLocalInput(BY_START);
   document.getElementById('admin-by-end').value   = toLocalInput(BY_END);
@@ -970,9 +971,17 @@ window.adminSaveDates = async function() {
 
   if (!startVal || !endVal) { fb.textContent = 'Both dates are required.'; return; }
 
-  // datetime-local is in EDT (UTC-4), convert to UTC ISO string for storage
-  const startUTC = new Date(new Date(startVal).getTime() + 4 * 60 * 60 * 1000).toISOString();
-  const endUTC   = new Date(new Date(endVal).getTime()   + 4 * 60 * 60 * 1000).toISOString();
+  // Parse datetime-local string manually as EDT (UTC-4) regardless of browser timezone
+  // e.g. "2026-07-17T00:00" → treat as midnight EDT → UTC is +4h
+  function edtStringToUTC(localStr) {
+    const [datePart, timePart] = localStr.split('T');
+    const [y, mo, d] = datePart.split('-').map(Number);
+    const [h, m] = timePart.split(':').map(Number);
+    // EDT = UTC-4, so UTC = local + 4h
+    return new Date(Date.UTC(y, mo - 1, d, h + 4, m)).toISOString();
+  }
+  const startUTC = edtStringToUTC(startVal);
+  const endUTC   = edtStringToUTC(endVal);
 
   if (new Date(startUTC) >= new Date(endUTC)) {
     fb.textContent = 'Start must be before end.'; return;
