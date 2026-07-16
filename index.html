@@ -1717,24 +1717,16 @@ window.filterCities = function() {
   const val = document.getElementById('bird-location').value.trim().toLowerCase();
   const box = document.getElementById('city-suggestions');
   cityIndex = -1;
-  // Clear coords when user types manually
   window._selectedLat = null; window._selectedLng = null;
   if (!val || val.length < 2) { box.classList.remove('open'); box.innerHTML = ''; return; }
 
   const matches = [];
   for (let i = 0; i < CITY_DATA.length && matches.length < 10; i++) {
     const [city, state] = CITY_DATA[i];
-    if (city.toLowerCase().startsWith(val) || (state.toLowerCase() + ' ' + city.toLowerCase()).includes(val)) {
+    const cityLower = city.toLowerCase();
+    const label = cityLower + ', ' + state.toLowerCase();
+    if (cityLower.startsWith(val) || label.startsWith(val)) {
       matches.push(CITY_DATA[i]);
-    }
-  }
-  // Also do contains search if we got < 5 starts-with
-  if (matches.length < 5) {
-    for (let i = 0; i < CITY_DATA.length && matches.length < 10; i++) {
-      const [city, state] = CITY_DATA[i];
-      if (!city.toLowerCase().startsWith(val) && city.toLowerCase().includes(val)) {
-        matches.push(CITY_DATA[i]);
-      }
     }
   }
 
