@@ -78,6 +78,12 @@
     overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
   }
   .nav-links::-webkit-scrollbar { display: none; }
+  .nav-hamburger {
+    display: none; background: none; border: 1px solid rgba(200,149,42,0.4);
+    border-radius: var(--radius); color: var(--gold); font-size: 1.05rem;
+    line-height: 1; padding: 0.4rem 0.65rem; cursor: pointer; transition: all 0.15s;
+  }
+  .nav-hamburger:hover { background: rgba(200,149,42,0.15); }
   .nav-link {
     background: none; border: none;
     color: rgba(245,237,214,0.7);
@@ -310,13 +316,23 @@
   .admin-current-pw { font-size: 0.75rem; color: rgba(245,237,214,0.35); margin-top: 0.2rem; }
   .admin-bird-count { font-size: 0.75rem; color: rgba(200,149,42,0.6); }
 
-  @media (max-width: 600px) {
+  @media (max-width: 700px) {
     nav {
       padding-left: max(1rem, env(safe-area-inset-left));
       padding-right: max(1rem, env(safe-area-inset-right));
     }
     .nav-brand { font-size: 1rem; flex-shrink: 0; }
-    .nav-link { font-size: 0.8rem; padding: 0.4rem 0.6rem; white-space: nowrap; }
+    .nav-hamburger { display: inline-block; }
+    .nav-links {
+      display: none;
+      position: absolute; top: 100%; left: 0; right: 0;
+      flex-direction: column; align-items: stretch; gap: 0.15rem;
+      background: #16281a; border-bottom: 1px solid rgba(200,149,42,0.3);
+      padding: 0.5rem max(1rem, env(safe-area-inset-left));
+      max-height: 75vh; overflow-y: auto;
+    }
+    .nav-links.open { display: flex; }
+    .nav-link { font-size: 0.9rem; padding: 0.65rem 0.85rem; text-align: left; white-space: normal; }
     .content { padding: 1.25rem 1rem; }
     .add-bird-grid { grid-template-columns: 1fr; }
     .nav-user { display: none; }
@@ -703,18 +719,30 @@ function renderNav(activePage) {
   const display = allUsersCache[currentUser]?.display || currentUser || '';
   const links = NAV_ITEMS.map(item => {
     const badge = item.page === 'shared' ? `<span id="nav-badge-shared" class="tag" style="display:none;margin-left:0.3rem;">0</span>` : '';
-    return `<button class="nav-link${item.page === activePage ? ' active' : ''}" onclick="showPage('${item.page}')">${esc(item.label)}${badge}</button>`;
+    return `<button class="nav-link${item.page === activePage ? ' active' : ''}" onclick="window.navAndCloseMenu('${item.page}')">${esc(item.label)}${badge}</button>`;
   }).join('');
   mount.innerHTML = `
     <nav>
       <div class="nav-brand" onclick="showPage('home')"><span>🦅</span> Big Year</div>
-      <div class="nav-links">${links}</div>
+      <button class="nav-hamburger" onclick="window.toggleNavMenu()" aria-label="Menu">☰</button>
+      <div class="nav-links" id="nav-links-list">${links}</div>
       <div class="nav-right">
         <span class="nav-user">${esc(display)}</span>
         <button class="btn-logout" onclick="handleLogout()">Sign out</button>
       </div>
     </nav>`;
   refreshShareBadge();
+}
+
+window.toggleNavMenu = function() {
+  const el = document.getElementById('nav-links-list');
+  if (el) el.classList.toggle('open');
+}
+
+window.navAndCloseMenu = function(page) {
+  const el = document.getElementById('nav-links-list');
+  if (el) el.classList.remove('open');
+  showPage(page);
 }
 
 async function refreshShareBadge() {
@@ -2213,6 +2241,13 @@ function renderProfileBirds() {
     </div>`;
   }).join('');
 }
+
+document.addEventListener('click', e => {
+  const nav = document.getElementById('nav-links-list');
+  if (nav && nav.classList.contains('open') && !e.target.closest('.nav-links') && !e.target.closest('.nav-hamburger')) {
+    nav.classList.remove('open');
+  }
+});
 
 // ── KEYBOARD ───────────────────────────────────────────────────────────────
 document.getElementById('login-password').addEventListener('keydown', e => { if (e.key==='Enter') handleLogin(); });
