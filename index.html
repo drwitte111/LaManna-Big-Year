@@ -12,6 +12,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Big Year">
 
+<!-- Android / Chrome "Add to Home Screen" support -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1A2E1A">
+
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -198,6 +202,8 @@
   .btn-add-bird:disabled { opacity: 0.4; cursor: not-allowed; }
   .birds-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.6rem; }
   .bird-card { background: rgba(245,237,214,0.04); border: 1px solid rgba(200,149,42,0.15); border-radius: 6px; padding: 0.7rem 0.9rem; display: flex; flex-direction: column; gap: 0.2rem; position: relative; }
+  .bird-card-matched { background: rgba(200,149,42,0.14); border-color: rgba(200,149,42,0.55); }
+  .bird-card-matched .bird-name { color: var(--pale-gold); }
   .bird-name { font-size: 0.9rem; font-weight: 600; color: var(--cream); }
   .bird-date { font-size: 0.72rem; color: rgba(245,237,214,0.35); }
   .bird-location { font-size: 0.75rem; color: rgba(200,149,42,0.7); }
@@ -447,6 +453,18 @@
   <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
 </div>
 
+<!-- ALL ACTIVITY -->
+<div id="page-activity" class="page">
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">All Activity</div>
+      <div class="page-subtitle">Every sighting, everyone, newest first</div>
+    </div>
+    <div class="message-list" id="activity-list"><div class="empty-state">Loading…</div></div>
+  </div>
+  <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
+</div>
+
 <!-- FAMILY PROFILES -->
 <div id="page-profiles" class="page">
   <div class="content">
@@ -639,6 +657,7 @@ const ADMIN_PW = 'lamannabigyear';
 const NAV_ITEMS = [
   { page: 'home',      label: 'Board' },
   { page: 'birds',     label: 'My Birds' },
+  { page: 'activity',  label: 'Activity' },
   { page: 'profiles',  label: 'Family' },
   { page: 'countdown', label: 'Countdown' },
   { page: 'myprofile', label: 'My Profile' },
@@ -726,6 +745,7 @@ window.showPage = function(name) {
 
   if (name === 'home') renderHome();
   if (name === 'birds') renderBirdsPage(currentUser, true);
+  if (name === 'activity') renderActivity();
   if (name === 'profiles') renderProfiles();
   if (name === 'myprofile') renderMyProfile();
   if (name === 'countdown') renderCountdown();
@@ -1640,10 +1660,66 @@ window.deleteBird = async function(id) {
 }
 
 // ── PROFILES ───────────────────────────────────────────────────────────────
-async function renderProfiles() {
+// ── ALL ACTIVITY ──────────────────────────────────────────────────────────
+async function renderActivity() {
+  const listEl = document.getElementById('activity-list');
+  listEl.innerHTML = '<div class="empty-state">Loading…</div>';
+
   await loadAllUsers();
 
-  const ranked = [];
+  const items = [];
+  for (const [key, u] of Object.entries(allUsersCache)) {
+    if (key === '__admin__') continue;
+    const snap = await getDocs(collection(db, 'users', key, 'birds'));
+    snap.docs.forEach(d => {
+      const b = d.data();
+      items.push({
+        display: u.display || key,
+        species: b.species,
+        location: b.location,
+        note: b.note,
+        detection: b.detection || (b.score === 2 ? 'seen' : 'heard'),
+        addedAt: b.addedAt,
+        date: b.date
+      });
+    });
+  }
+
+  // Newest first — fall back to the logged date string if addedAt is missing
+  items.sort((a, b) => {
+    const ta = a.addedAt?.toMillis ? a.addedAt.toMillis() : 0;
+    const tb = b.addedAt?.toMillis ? b.addedAt.toMillis() : 0;
+    if (ta !== tb) return tb - ta;
+    return (b.date || '').localeCompare(a.date || '');
+  });
+
+  if (!items.length) {
+    listEl.innerHTML = '<div class="empty-state">No sightings logged yet.</div>';
+    return;
+  }
+
+  listEl.innerHTML = items.map(it => {
+    const scoreLabel = it.detection === 'seen' ? '👁 Seen · 2pts' : '👂 Heard · 1pt';
+    const scoreCls = it.detection === 'seen' ? 'seen' : 'heard';
+    return `
+      <div class="message-card">
+        <div class="msg-header">
+          <div class="msg-avatar">${initials(it.display)}</div>
+          <span class="msg-author">${esc(it.display)}</span>
+          <span class="msg-time">${formatTime(it.addedAt)}</span>
+        </div>
+        <div class="msg-text">
+          🐦 <strong>${esc(it.species)}</strong> <span class="bird-score ${scoreCls}">${scoreLabel}</span>
+          ${it.location ? `<br><span class="bird-location">📍 ${esc(it.location)}</span>` : ''}
+          ${it.note ? `<br><span class="bird-note">${esc(it.note)}</span>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+
+async function renderProfiles() {
+  await loadAllUsers();
   for (const [key, u] of Object.entries(allUsersCache)) {
     const snap = await getDocs(collection(db, 'users', key, 'birds'));
     const birds = snap.docs.map(d => d.data());
@@ -1685,6 +1761,8 @@ async function renderProfiles() {
     </div>`).join('');
 }
 
+let profileViewState = null; // { birds, myLowerSpecies, isMe, showMissingOnly }
+
 window.viewProfile = async function(userKey) {
   await loadAllUsers();
   const u = allUsersCache[userKey];
@@ -1704,19 +1782,14 @@ window.viewProfile = async function(userKey) {
   const totalPoints = Object.values(best).reduce((a, v) => a + v, 0);
   const isMe = userKey === currentUser;
 
-  const birdsHTML = birds.length ? birds.map(b => {
-    const det = b.detection || (b.score === 2 ? 'seen' : 'heard');
-    const scoreLabel = det === 'seen' ? '👁 Seen · 2pts' : '👂 Heard · 1pt';
-    const scoreCls = det === 'seen' ? 'seen' : 'heard';
-    return `
-    <div class="bird-card">
-      <div class="bird-name">🐦 ${esc(b.species)} <span class="bird-score ${scoreCls}">${scoreLabel}</span></div>
-      ${b.location ? `<div class="bird-location">📍 ${esc(b.location)}</div>` : ''}
-      <div class="bird-date">${b.date || ''}</div>
-      ${b.note ? `<div class="bird-note">${esc(b.note)}</div>` : ''}
-    </div>`;
-  }).join('') :
-    '<div class="empty-state" style="grid-column:1/-1;">No birds logged yet.</div>';
+  // The viewer's own species, so we can highlight birds they've also found.
+  let myLowerSpecies = new Set();
+  if (!isMe) {
+    const mySnap = await getDocs(collection(db, 'users', currentUser, 'birds'));
+    mySnap.docs.forEach(d => myLowerSpecies.add(d.data().species.toLowerCase()));
+  }
+
+  profileViewState = { birds, myLowerSpecies, isMe, showMissingOnly: false };
 
   document.getElementById('profile-view-content').innerHTML = `
     <button class="back-btn" onclick="showPage('profiles')">← Back to family</button>
@@ -1733,11 +1806,58 @@ window.viewProfile = async function(userKey) {
       <div class="stat-card"><div class="stat-num">${birds.length}</div><div class="stat-label">Sightings</div></div>
     </div>
     ${isMe ? '<div style="text-align:right;margin-bottom:0.75rem;"><button class="btn-add-bird" onclick="showPage(\'birds\')">+ Add a bird</button></div>' : ''}
+    ${!isMe ? `
+    <div class="detection-toggle" style="max-width:340px;margin-bottom:1rem;">
+      <button type="button" class="detection-btn active" id="pv-toggle-all" onclick="window.setProfileFilter(false)">All birds</button>
+      <button type="button" class="detection-btn" id="pv-toggle-missing" onclick="window.setProfileFilter(true)">Not found yet</button>
+    </div>` : ''}
     <div class="section-label">Species list</div>
-    <div class="birds-grid">${birdsHTML}</div>
+    <div class="birds-grid" id="profile-birds-grid"></div>
   `;
 
+  renderProfileBirds();
   showPage('profile-view');
+}
+
+window.setProfileFilter = function(missingOnly) {
+  if (!profileViewState) return;
+  profileViewState.showMissingOnly = missingOnly;
+  const allBtn = document.getElementById('pv-toggle-all');
+  const missBtn = document.getElementById('pv-toggle-missing');
+  if (allBtn) allBtn.classList.toggle('active', !missingOnly);
+  if (missBtn) missBtn.classList.toggle('active', missingOnly);
+  renderProfileBirds();
+}
+
+function renderProfileBirds() {
+  if (!profileViewState) return;
+  const { birds, myLowerSpecies, isMe, showMissingOnly } = profileViewState;
+  const grid = document.getElementById('profile-birds-grid');
+  if (!grid) return;
+
+  const filtered = (isMe || !showMissingOnly)
+    ? birds
+    : birds.filter(b => !myLowerSpecies.has(b.species.toLowerCase()));
+
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">' +
+      (showMissingOnly ? "You've found every species on this list!" : 'No birds logged yet.') + '</div>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(b => {
+    const det = b.detection || (b.score === 2 ? 'seen' : 'heard');
+    const scoreLabel = det === 'seen' ? '👁 Seen · 2pts' : '👂 Heard · 1pt';
+    const scoreCls = det === 'seen' ? 'seen' : 'heard';
+    const matched = !isMe && myLowerSpecies.has(b.species.toLowerCase());
+    return `
+    <div class="bird-card${matched ? ' bird-card-matched' : ''}">
+      <div class="bird-name">🐦 ${esc(b.species)} <span class="bird-score ${scoreCls}">${scoreLabel}</span></div>
+      ${b.location ? `<div class="bird-location">📍 ${esc(b.location)}</div>` : ''}
+      <div class="bird-date">${b.date || ''}</div>
+      ${b.note ? `<div class="bird-note">${esc(b.note)}</div>` : ''}
+    </div>`;
+  }).join('');
 }
 
 // ── KEYBOARD ───────────────────────────────────────────────────────────────
