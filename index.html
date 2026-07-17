@@ -238,6 +238,19 @@
 
   /* AUTOCOMPLETE */
   .suggestions-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: #1e3520; border: 1px solid rgba(200,149,42,0.4); border-top: none; border-radius: 0 0 var(--radius) var(--radius); max-height: 180px; overflow-y: auto; z-index: 200; display: none; }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+  .modal-card { background: #1e3520; border: 1px solid rgba(200,149,42,0.4); border-radius: 8px; padding: 1.5rem; max-width: 380px; width: 100%; }
+  .modal-title { font-family: 'Playfair Display', serif; font-size: 1.2rem; color: var(--gold); margin-bottom: 0.75rem; }
+  .modal-body { font-size: 0.9rem; color: rgba(245,237,214,0.8); line-height: 1.5; margin-bottom: 1rem; }
+  .modal-recipient-btn { width: 100%; text-align: left; background: rgba(245,237,214,0.05); border: 1px solid rgba(200,149,42,0.25); border-radius: var(--radius); padding: 0.6rem 0.85rem; color: var(--cream); font-family: 'Source Sans 3', sans-serif; font-size: 0.9rem; cursor: pointer; margin-bottom: 0.5rem; transition: all 0.15s; }
+  .modal-recipient-btn:hover { background: rgba(200,149,42,0.15); border-color: var(--gold); }
+  .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.5rem; }
+
+  /* BIRD CARD SHARE BUTTON (second action, next to delete) */
+  .bird-share { position: absolute; top: 0.5rem; right: 2.15rem; background: none; border: none; color: rgba(200,149,42,0.3); cursor: pointer; font-size: 0.85rem; transition: color 0.15s; }
+  .bird-share:hover { color: var(--gold); }
   .suggestions-dropdown.open { display: block; }
   .suggestion-item { padding: 0.5rem 0.85rem; font-size: 0.88rem; cursor: pointer; color: var(--cream); transition: background 0.1s; }
   .suggestion-item:hover, .suggestion-item.active { background: rgba(200,149,42,0.15); color: var(--gold); }
@@ -462,6 +475,18 @@
   <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
 </div>
 
+<!-- SHARED WITH ME -->
+<div id="page-shared" class="page">
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">Shared With You</div>
+      <div class="page-subtitle">Birds family members have sent your way — tap one to log it or dismiss it</div>
+    </div>
+    <div class="message-list" id="shared-list"><div class="empty-state">Loading…</div></div>
+  </div>
+  <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
+</div>
+
 <!-- FAMILY PROFILES -->
 <div id="page-profiles" class="page">
   <div class="content">
@@ -617,6 +642,17 @@
     </div>
 
     <hr class="section-rule">
+    <div class="section-label">Unlisted species</div>
+    <p class="settings-hint">Birds someone logged that aren't on the current Ohio species list (<code style="color:var(--pale-gold)">ohio_birds.txt</code> on GitHub). Use "Edit" to fix a typo/rename right here, or treat this as a guide and update the GitHub file directly.</p>
+    <div id="admin-unlisted-list" style="margin-bottom:1.5rem;"></div>
+
+    <hr class="section-rule">
+    <div class="section-label">All bird entries</div>
+    <p class="settings-hint">Every sighting logged by anyone. Search, edit, or delete an individual entry.</p>
+    <input id="admin-birds-search" class="search-input" type="text" placeholder="Search by species or person…" oninput="renderAdminAllBirds()">
+    <div id="admin-allbirds-list" style="margin-bottom:1.5rem;"></div>
+
+    <hr class="section-rule">
     <div class="section-label">Family accounts</div>
     <div id="admin-user-list"></div>
   </div>
@@ -655,6 +691,7 @@ const NAV_ITEMS = [
   { page: 'home',      label: 'Board' },
   { page: 'birds',     label: 'My Birds' },
   { page: 'activity',  label: 'Activity' },
+  { page: 'shared',    label: 'Shared' },
   { page: 'profiles',  label: 'Family' },
   { page: 'countdown', label: 'Countdown' },
   { page: 'myprofile', label: 'My Profile' },
@@ -664,9 +701,10 @@ function renderNav(activePage) {
   const mount = document.getElementById('nav-mount');
   if (!mount) return;
   const display = allUsersCache[currentUser]?.display || currentUser || '';
-  const links = NAV_ITEMS.map(item =>
-    `<button class="nav-link${item.page === activePage ? ' active' : ''}" onclick="showPage('${item.page}')">${esc(item.label)}</button>`
-  ).join('');
+  const links = NAV_ITEMS.map(item => {
+    const badge = item.page === 'shared' ? `<span id="nav-badge-shared" class="tag" style="display:none;margin-left:0.3rem;">0</span>` : '';
+    return `<button class="nav-link${item.page === activePage ? ' active' : ''}" onclick="showPage('${item.page}')">${esc(item.label)}${badge}</button>`;
+  }).join('');
   mount.innerHTML = `
     <nav>
       <div class="nav-brand" onclick="showPage('home')"><span>🦅</span> Big Year</div>
@@ -676,6 +714,19 @@ function renderNav(activePage) {
         <button class="btn-logout" onclick="handleLogout()">Sign out</button>
       </div>
     </nav>`;
+  refreshShareBadge();
+}
+
+async function refreshShareBadge() {
+  if (!currentUser || currentUser === '__admin__') return;
+  try {
+    const snap = await getDocs(collection(db, 'users', currentUser, 'shares'));
+    const pending = snap.docs.length;
+    const badge = document.getElementById('nav-badge-shared');
+    if (!badge) return;
+    if (pending > 0) { badge.textContent = String(pending); badge.style.display = 'inline-block'; }
+    else badge.style.display = 'none';
+  } catch(e) { console.error('refreshShareBadge', e); }
 }
 
 // ── State ──────────────────────────────────────────────────────────────────
@@ -686,6 +737,7 @@ let birdViewUser = null;
 let birdViewReadonly = false;
 let cachedBirds = [];
 let allUsersCache = {};
+let adminBirdsById = {}; // admin-only: key = `${userKey}::${birdId}` → full bird record, for edit/delete
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function esc(str) {
@@ -705,6 +757,21 @@ function formatTime(ts) {
 }
 
 function initials(name) { return String(name||'?').slice(0,2).toUpperCase(); }
+
+// ── MODAL (generic, used by share-picker and shared-bird confirm) ──────────
+function showModal(innerHTML) {
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.id = 'app-modal-overlay';
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal-card">${innerHTML}</div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+  document.body.appendChild(overlay);
+}
+window.closeModal = function() {
+  const el = document.getElementById('app-modal-overlay');
+  if (el) el.remove();
+}
 
 function hideLoading() {
   document.getElementById('loading-overlay').classList.add('hidden');
@@ -743,6 +810,7 @@ window.showPage = function(name) {
   if (name === 'home') renderHome();
   if (name === 'birds') renderBirdsPage(currentUser, true);
   if (name === 'activity') renderActivity();
+  if (name === 'shared') renderSharedPage();
   if (name === 'profiles') renderProfiles();
   if (name === 'myprofile') renderMyProfile();
   if (name === 'countdown') renderCountdown();
@@ -978,6 +1046,117 @@ window.savePassword = async function() {
   } catch(e) { setFeedback('fb-password', 'Save failed.', true); console.error(e); }
 }
 
+// ── ADMIN: bird row edit/save/delete (shared by Unlisted + All bird entries) ─
+function adminBirdRowHTML(key) {
+  const b = adminBirdsById[key];
+  if (!b) return '';
+  const scoreLabel = b.detection === 'seen' ? '👁 Seen · 2pts' : '👂 Heard · 1pt';
+  return `
+    <div class="admin-user-card" style="padding:0.75rem 1rem;margin-bottom:0.5rem;" id="abrow-${key}">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+        <div>
+          <strong style="color:var(--pale-gold);">${esc(b.species)}</strong>
+          <span class="bird-score ${b.detection}">${scoreLabel}</span>
+          <span class="admin-user-key">· ${esc(b.display)}</span>
+        </div>
+        <div class="admin-actions">
+          <button class="btn-admin-save" onclick="window.adminEditBird('${key}')">Edit</button>
+          <button class="btn-admin-delete" onclick="window.adminDeleteBird('${key}')">Delete</button>
+        </div>
+      </div>
+      <div class="admin-user-key" style="margin-top:0.3rem;">${esc(b.date)}${b.location ? ' · ' + esc(b.location) : ''}${b.note ? ' · ' + esc(b.note) : ''}</div>
+    </div>`;
+}
+
+function adminBirdEditHTML(key) {
+  const b = adminBirdsById[key];
+  return `
+    <div class="admin-user-card" style="padding:0.75rem 1rem;margin-bottom:0.5rem;" id="abrow-${key}">
+      <div class="admin-user-key" style="margin-bottom:0.5rem;">${esc(b.display)}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.5rem;">
+        <input class="form-input" id="abe-species-${key}" value="${esc(b.species)}" placeholder="Species">
+        <input class="form-input" id="abe-location-${key}" value="${esc(b.location)}" placeholder="Location">
+        <input class="form-input" type="date" id="abe-date-${key}" value="${esc(b.date)}">
+        <input class="form-input" id="abe-note-${key}" value="${esc(b.note)}" placeholder="Note">
+      </div>
+      <div class="detection-toggle" style="max-width:260px;margin-bottom:0.5rem;">
+        <button type="button" class="detection-btn${b.detection !== 'heard' ? ' active' : ''}" id="abe-seen-${key}" onclick="window.adminSetDet('${key}','seen')">👁 Seen</button>
+        <button type="button" class="detection-btn${b.detection === 'heard' ? ' active' : ''}" id="abe-heard-${key}" onclick="window.adminSetDet('${key}','heard')">👂 Heard</button>
+      </div>
+      <div style="display:flex;gap:0.5rem;">
+        <button class="btn-admin-save" onclick="window.adminSaveBird('${key}')">Save</button>
+        <button class="btn-logout" onclick="window.adminCancelBird('${key}')">Cancel</button>
+      </div>
+      <div class="admin-feedback" id="abe-fb-${key}"></div>
+    </div>`;
+}
+
+window.adminEditBird = function(key) {
+  const el = document.getElementById('abrow-' + key);
+  if (el) el.outerHTML = adminBirdEditHTML(key);
+}
+
+window.adminCancelBird = function(key) {
+  const el = document.getElementById('abrow-' + key);
+  if (el) el.outerHTML = adminBirdRowHTML(key);
+}
+
+window.adminSetDet = function(key, val) {
+  adminBirdsById[key]._pendingDetection = val;
+  document.getElementById('abe-seen-' + key).classList.toggle('active', val === 'seen');
+  document.getElementById('abe-heard-' + key).classList.toggle('active', val === 'heard');
+}
+
+window.adminSaveBird = async function(key) {
+  const b = adminBirdsById[key];
+  const fb = document.getElementById('abe-fb-' + key);
+  const species = document.getElementById('abe-species-' + key).value.trim();
+  const location = document.getElementById('abe-location-' + key).value.trim();
+  const date = document.getElementById('abe-date-' + key).value;
+  const note = document.getElementById('abe-note-' + key).value.trim();
+  const detection = b._pendingDetection || b.detection;
+  if (!species) { fb.textContent = 'Species can\'t be empty.'; fb.style.color = '#e07060'; return; }
+
+  try {
+    await updateDoc(doc(db, 'users', b.userKey, 'birds', b.birdId), {
+      species, location, note, date, detection, score: detection === 'seen' ? 2 : 1
+    });
+    renderAdmin();
+  } catch(e) {
+    fb.textContent = 'Save failed.'; fb.style.color = '#e07060';
+    console.error(e);
+  }
+}
+
+window.adminDeleteBird = async function(key) {
+  const b = adminBirdsById[key];
+  if (!confirm(`Delete "${b.species}" logged by ${b.display}? This cannot be undone.`)) return;
+  try {
+    await deleteDoc(doc(db, 'users', b.userKey, 'birds', b.birdId));
+    renderAdmin();
+  } catch(e) { console.error(e); }
+}
+
+window.renderAdminAllBirds = function() {
+  const searchEl = document.getElementById('admin-birds-search');
+  const search = (searchEl?.value || '').trim().toLowerCase();
+  const listEl = document.getElementById('admin-allbirds-list');
+  if (!listEl) return;
+
+  let keys = Object.keys(adminBirdsById);
+  if (search) {
+    keys = keys.filter(k => {
+      const b = adminBirdsById[k];
+      return b.species.toLowerCase().includes(search) || b.display.toLowerCase().includes(search);
+    });
+  }
+  keys.sort((a, b) => adminBirdsById[a].species.localeCompare(adminBirdsById[b].species));
+
+  listEl.innerHTML = keys.length
+    ? keys.map(k => adminBirdRowHTML(k)).join('')
+    : `<div class="empty-state">${search ? 'No matches.' : 'Nothing logged yet.'}</div>`;
+}
+
 // ── ADMIN ──────────────────────────────────────────────────────────────────
 async function renderAdmin() {
   await loadByDates();
@@ -994,17 +1173,46 @@ async function renderAdmin() {
   document.getElementById('admin-by-current').textContent =
     'Currently: ' + fmtDate(BY_START) + ' → ' + fmtDate(BY_END);
   const listEl = document.getElementById('admin-user-list');
+  const unlistedEl = document.getElementById('admin-unlisted-list');
   listEl.innerHTML = '<div class="empty-state">Loading accounts…</div>';
+  unlistedEl.innerHTML = '<div class="empty-state">Loading…</div>';
 
   const snap = await getDocs(collection(db, 'users'));
-  if (snap.empty) { listEl.innerHTML = '<div class="empty-state">No accounts yet.</div>'; return; }
+  if (snap.empty) {
+    listEl.innerHTML = '<div class="empty-state">No accounts yet.</div>';
+    unlistedEl.innerHTML = '<div class="empty-state">Nothing to check yet.</div>';
+    document.getElementById('admin-allbirds-list').innerHTML = '<div class="empty-state">Nothing logged yet.</div>';
+    adminBirdsById = {};
+    return;
+  }
 
+  const unlistedKeys = [];
+  adminBirdsById = {};
   const rows = await Promise.all(snap.docs.map(async d => {
     const u = d.data();
     const bSnap = await getDocs(collection(db, 'users', d.id, 'birds'));
+    bSnap.docs.forEach(bd => {
+      const b = bd.data();
+      const key = d.id + '::' + bd.id;
+      adminBirdsById[key] = {
+        userKey: d.id, birdId: bd.id, display: u.display,
+        species: b.species, location: b.location || '', date: b.date || '',
+        note: b.note || '', detection: b.detection || (b.score === 2 ? 'seen' : 'heard')
+      };
+      if (b.species && !OHIO_BIRDS_LOWER.includes(b.species.toLowerCase())) {
+        unlistedKeys.push(key);
+      }
+    });
     const bCount = [...new Set(bSnap.docs.map(b => b.data().species.toLowerCase()))].length;
     return { id: d.id, display: u.display, password: u.password, bCount };
   }));
+
+  unlistedKeys.sort((a, b) => adminBirdsById[a].species.localeCompare(adminBirdsById[b].species));
+  unlistedEl.innerHTML = unlistedKeys.length
+    ? unlistedKeys.map(k => adminBirdRowHTML(k)).join('')
+    : '<div class="empty-state">Every logged species matches the current list.</div>';
+
+  renderAdminAllBirds();
 
   rows.sort((a, b) => a.display.localeCompare(b.display));
 
@@ -1289,6 +1497,8 @@ window.renderBirdCards = function() {
   grid.innerHTML = filtered.map(b => {
     const delBtn = !birdViewReadonly
       ? `<button class="bird-del" onclick="event.stopPropagation(); window.deleteBird('${b.id}')" title="Remove">✕</button>` : '';
+    const shareBtn = !birdViewReadonly
+      ? `<button class="bird-share" onclick="event.stopPropagation(); window.openShareBird('${b.id}')" title="Share with someone">📤</button>` : '';
     const det = b.detection || (b.score === 2 ? 'seen' : 'heard');
     const scoreLabel = det === 'seen' ? '👁 Seen · 2pts' : '👂 Heard · 1pt';
     const scoreCls = det === 'seen' ? 'seen' : 'heard';
@@ -1297,6 +1507,7 @@ window.renderBirdCards = function() {
     return `
       <div class="bird-card" ${editAttrs}>
         ${delBtn}
+        ${shareBtn}
         <div class="bird-name">🐦 ${esc(b.species)} <span class="bird-score ${scoreCls}">${scoreLabel}</span></div>
         ${b.location ? `<div class="bird-location">📍 ${esc(b.location)}</div>` : ''}
         <div class="bird-date">${b.date || ''}</div>
@@ -1656,7 +1867,150 @@ window.deleteBird = async function(id) {
   } catch(e) { console.error(e); }
 }
 
-// ── PROFILES ───────────────────────────────────────────────────────────────
+// ── SHARE A BIRD ─────────────────────────────────────────────────────────
+window.openShareBird = async function(birdId) {
+  const b = cachedBirds.find(x => x.id === birdId);
+  if (!b) return;
+  await loadAllUsers();
+  const recipients = Object.entries(allUsersCache).filter(([key]) => key !== currentUser && key !== '__admin__');
+  if (!recipients.length) {
+    showModal(`<div class="modal-title">Share ${esc(b.species)}</div><div class="modal-body">No one else has an account yet.</div><div class="modal-actions"><button class="btn-logout" onclick="closeModal()">Close</button></div>`);
+    return;
+  }
+  const buttons = recipients.map(([key, u]) =>
+    `<button class="modal-recipient-btn" onclick="window.sendShare('${birdId}','${key}')">${esc(u.display || key)}</button>`
+  ).join('');
+  showModal(`
+    <div class="modal-title">Share ${esc(b.species)}</div>
+    <div class="modal-body">Send this sighting to:</div>
+    ${buttons}
+    <div class="modal-actions"><button class="btn-logout" onclick="closeModal()">Cancel</button></div>
+  `);
+}
+
+window.sendShare = async function(birdId, recipientKey) {
+  const b = cachedBirds.find(x => x.id === birdId);
+  if (!b) return;
+  const fromDisplay = allUsersCache[currentUser]?.display || currentUser;
+  try {
+    await addDoc(collection(db, 'users', recipientKey, 'shares'), {
+      fromUser: currentUser, fromDisplay,
+      species: b.species, location: b.location || '', note: b.note || '',
+      detection: b.detection || (b.score === 2 ? 'seen' : 'heard'),
+      score: b.score || 1, date: b.date || '',
+      ts: serverTimestamp()
+    });
+    closeModal();
+    const errEl = document.getElementById('bird-error');
+    if (errEl) {
+      errEl.style.color = '#7ec87e';
+      errEl.textContent = `Shared "${b.species}" with ${allUsersCache[recipientKey]?.display || recipientKey}.`;
+      setTimeout(() => { errEl.textContent = ''; errEl.style.color = ''; }, 3000);
+    }
+  } catch(e) { console.error('sendShare', e); closeModal(); }
+}
+
+// ── SHARED WITH ME ──────────────────────────────────────────────────────
+let sharedItemsById = {};
+
+async function renderSharedPage() {
+  const listEl = document.getElementById('shared-list');
+  listEl.innerHTML = '<div class="empty-state">Loading…</div>';
+
+  const snap = await getDocs(collection(db, 'users', currentUser, 'shares'));
+  sharedItemsById = {};
+  snap.docs.forEach(d => { sharedItemsById[d.id] = d.data(); });
+
+  const ids = Object.keys(sharedItemsById).sort((a, b) => {
+    const ta = sharedItemsById[a].ts?.toMillis ? sharedItemsById[a].ts.toMillis() : 0;
+    const tb = sharedItemsById[b].ts?.toMillis ? sharedItemsById[b].ts.toMillis() : 0;
+    return tb - ta;
+  });
+
+  if (!ids.length) {
+    listEl.innerHTML = '<div class="empty-state">No birds have been shared with you yet.</div>';
+    refreshShareBadge();
+    return;
+  }
+
+  listEl.innerHTML = ids.map(id => {
+    const s = sharedItemsById[id];
+    const det = s.detection === 'heard' ? 'heard' : 'seen';
+    const scoreLabel = det === 'seen' ? '👁 Seen · 2pts' : '👂 Heard · 1pt';
+    return `
+      <div class="message-card" style="cursor:pointer;" onclick="window.openShareConfirm('${id}')">
+        <div class="msg-header">
+          <div class="msg-avatar">${initials(s.fromDisplay)}</div>
+          <span class="msg-author">${esc(s.fromDisplay)}</span>
+          <span class="msg-time">${formatTime(s.ts)}</span>
+        </div>
+        <div class="msg-text">
+          🐦 <strong>${esc(s.species)}</strong> <span class="bird-score ${det}">${scoreLabel}</span>
+          ${s.location ? `<br><span class="bird-location">📍 ${esc(s.location)}</span>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+
+  refreshShareBadge();
+}
+
+window.openShareConfirm = function(shareId) {
+  const s = sharedItemsById[shareId];
+  if (!s) return;
+  showModal(`
+    <div class="modal-title">🐦 ${esc(s.species)}</div>
+    <div class="modal-body">${esc(s.fromDisplay)} shared this sighting with you${s.location ? ' from ' + esc(s.location) : ''}. Log it to your own list?</div>
+    <div class="modal-actions">
+      <button class="btn-logout" onclick="window.dismissShare('${shareId}')">Dismiss</button>
+      <button class="btn-admin-save" onclick="window.acceptShare('${shareId}')">Log it</button>
+    </div>
+  `);
+}
+
+window.acceptShare = async function(shareId) {
+  const s = sharedItemsById[shareId];
+  if (!s) return;
+  try {
+    // Dedup against the recipient's existing birds, same logic as manual add.
+    const mySnap = await getDocs(collection(db, 'users', currentUser, 'birds'));
+    const existing = mySnap.docs.find(d => d.data().species.toLowerCase() === s.species.toLowerCase());
+    const newScore = s.score || (s.detection === 'seen' ? 2 : 1);
+
+    if (existing) {
+      const exData = existing.data();
+      const exScore = exData.score || 1;
+      if (newScore > exScore) {
+        await updateDoc(doc(db, 'users', currentUser, 'birds', existing.id), {
+          score: newScore, detection: s.detection,
+          location: s.location || exData.location, note: s.note || exData.note,
+          date: s.date || exData.date
+        });
+      }
+      // If existing score is already equal or better, nothing to update — just clear the share below.
+    } else {
+      await addDoc(collection(db, 'users', currentUser, 'birds'), {
+        species: s.species, location: s.location || '', note: s.note || '',
+        score: newScore, detection: s.detection || 'seen',
+        date: s.date || new Date().toISOString().split('T')[0],
+        addedAt: serverTimestamp()
+      });
+    }
+
+    await deleteDoc(doc(db, 'users', currentUser, 'shares', shareId));
+    closeModal();
+    renderSharedPage();
+  } catch(e) { console.error('acceptShare', e); closeModal(); }
+}
+
+window.dismissShare = async function(shareId) {
+  try {
+    await deleteDoc(doc(db, 'users', currentUser, 'shares', shareId));
+    closeModal();
+    renderSharedPage();
+  } catch(e) { console.error('dismissShare', e); closeModal(); }
+}
+
+
 // ── ALL ACTIVITY ──────────────────────────────────────────────────────────
 async function renderActivity() {
   const listEl = document.getElementById('activity-list');
@@ -1716,6 +2070,7 @@ async function renderActivity() {
 }
 
 
+// ── PROFILES ───────────────────────────────────────────────────────────────
 async function renderProfiles() {
   await loadAllUsers();
   const ranked = [];
