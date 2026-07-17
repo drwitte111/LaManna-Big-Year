@@ -1,12 +1,9 @@
 Acadian Flycatcher
 Acorn Woodpecker
-Acorn Woodpecker
 Akekee
 Akiapolaau
 Alder Flycatcher
 Aleutian Tern
-Aleutian Tern
-Allen's Hummingbird
 Allen's Hummingbird
 Altamira Oriole
 American Avocet
@@ -20,7 +17,6 @@ American Goldfinch
 American Kestrel
 American Oystercatcher
 American Pipit
-American Pipit
 American Redstart
 American Robin
 American Three-toed Woodpecker
@@ -29,27 +25,20 @@ American White Pelican
 American Wigeon
 American Woodcock
 Ancient Murrelet
-Ancient Murrelet
 Anhinga
 Anianiau
-Anna's Hummingbird
 Anna's Hummingbird
 Antillean Nighthawk
 Apapane
 Aplomado Falcon
-Aplomado Falcon
 Arctic Loon
-Arctic Tern
 Arctic Tern
 Arctic Warbler
 Arizona Woodpecker
-Arizona Woodpecker
 Ash-throated Flycatcher
-Ashy Storm-Petrel
 Ashy Storm-Petrel
 Atlantic Puffin
 Audubon's Oriole
-Audubon's Shearwater
 Audubon's Shearwater
 Azure Gallinule
 Bachman's Sparrow
@@ -57,20 +46,16 @@ Bachman's Warbler
 Bahama Mockingbird
 Bahama Swallow
 Baikal Teal
-Baikal Teal
 Baird's Sandpiper
 Bald Eagle
 Baltimore Oriole
 Banded Stilt
 Band-rumped Storm-Petrel
-Band-rumped Storm-Petrel
 Band-rumped Storm-Petrel (Akē'akē)
-Band-tailed Pigeon
 Band-tailed Pigeon
 Bank Swallow
 Barn Owl
 Barn Swallow
-Barnacle Goose
 Barnacle Goose
 Barred Owl
 Barrow's Goldeneye
@@ -78,32 +63,26 @@ Bar-tailed Godwit
 Bay-breasted Warbler
 Beach Stone-curlew
 Bean Goose
-Bean Goose
 Bell's Vireo
 Belted Kingfisher
 Bendire's Thrasher
 Bermuda Petrel
-Berylline Hummingbird
 Berylline Hummingbird
 Bewick's Swan
 Bewick's Wren
 Bicknell's Thrush
 Black Guillemot
 Black Noddy
-Black Noddy
 Black Oystercatcher
 Black Phoebe
 Black Rail
 Black Scoter
 Black Skimmer
-Black Skimmer
-Black Storm-Petrel
 Black Storm-Petrel
 Black Swift
 Black Tern
 Black Turnstone
 Black Vulture
-Black-backed Woodpecker
 Black-backed Woodpecker
 Black-bellied Plover
 Black-billed Cuckoo
@@ -118,33 +97,25 @@ Black-chinned Hummingbird
 Black-chinned Sparrow
 Black-crowned Night-Heron
 Black-headed Grosbeak
-Black-headed Grosbeak
 Black-headed Gull
 Black-legged Kittiwake
 Black-necked Stilt
 Blackpoll Warbler
 Black-tailed Gnatcatcher
 Black-tailed Godwit
-Black-tailed Godwit
 Black-tailed Gull
 Black-throated Blue Warbler
 Black-throated Gray Warbler
 Black-throated Green Warbler
 Black-vented Shearwater
-Black-vented Shearwater
 Black-winged Stilt
-Black-winged Stilt
-Blue Grosbeak
 Blue Grosbeak
 Blue Jay
-Blue-footed Booby
 Blue-footed Booby
 Blue-gray Gnatcatcher
 Blue-gray Noddy
 Blue-headed Vireo
 Bluethroat
-Bluethroat
-Blue-throated Mountain-gem
 Blue-throated Mountain-gem
 Blue-winged Teal
 Blue-winged Warbler
@@ -153,43 +124,32 @@ Bobolink
 Bohemian Waxwing
 Bonaparte's Gull
 Boreal Chickadee
-Boreal Chickadee
-Boreal Owl
 Boreal Owl
 Botteri's Sparrow
 Brambling
-Brandt's Cormorant
 Brandt's Cormorant
 Brant
 Brewer's Blackbird
 Brewer's Sparrow
 Bridled Tern
-Bridled Tern
 Bridled Titmouse
 Bristle-thighed Curlew
 Broad-billed Hummingbird
-Broad-billed Hummingbird
-Broad-billed Sandpiper
 Broad-billed Sandpiper
 Broad-tailed Hummingbird
 Broad-winged Hawk
 Bronzed Cowbird
 Brown Booby
-Brown Booby
-Brown Booby
 Brown Booby ('A)
 Brown Creeper
 Brown Jay
 Brown Noddy
-Brown Noddy
-Brown Pelican
 Brown Pelican
 Brown Thrasher
 Brown-crested Flycatcher
 Brown-headed Cowbird
 Brown-headed Nuthatch
 Buff-bellied Hummingbird
-Buff-breasted Flycatcher
 Buff-breasted Flycatcher
 Buff-breasted Sandpiper
 Buff-collared Nightjar
@@ -218,7 +178,6 @@ Carolina Wren
 Caspian Plover
 Caspian Tern
 Cassin's Auklet
-Cassin's Auklet
 Cassin's Finch
 Cassin's Kingbird
 Cassin's Sparrow
@@ -243,37 +202,26 @@ Cliff Swallow
 Colima Warbler
 Collared Plover
 Common Black Hawk
-Common Black Hawk
 Common Crane
 Common Cuckoo
 Common Eider
 Common Gallinule
-Common Gallinule
 Common Goldeneye
 Common Grackle
-Common Greenshank
 Common Greenshank
 Common Ground-Dove
 Common Loon
 Common Merganser
 Common Murre
-Common Murre
 Common Nighthawk
 Common Pauraque
 Common Pochard
-Common Pochard
 Common Poorwill
 Common Raven
-Common Raven
-Common Redpoll
 Common Redpoll
 Common Redshank
-Common Redshank
-Common Ringed Plover
 Common Ringed Plover
 Common Sandpiper
-Common Sandpiper
-Common Shelduck
 Common Shelduck
 Common Snipe
 Common Swift
@@ -284,15 +232,11 @@ Cook's Petrel
 Cooper's Hawk
 Cordilleran Flycatcher
 Corn Crake
-Corn Crake
 Costa's Hummingbird
 Couch's Kingbird
 Crab-plover
 Craveri's Murrelet
-Craveri's Murrelet
 Crested Auklet
-Crested Auklet
-Crested Caracara
 Crested Caracara
 Crested Myna
 Crissal Thrasher
@@ -323,42 +267,32 @@ Egyptian Goose
 Egyptian Plover
 Elegant Quail
 Elegant Tern
-Elegant Tern
 Elegant Trogon
 Elepaio
 Elf Owl
-Elf Owl
-Emperor Goose
 Emperor Goose
 Eurasian Collared-Dove
 Eurasian Coot
 Eurasian Curlew
-Eurasian Curlew
-Eurasian Dotterel
 Eurasian Dotterel
 Eurasian Oystercatcher
 Eurasian Wigeon
 Eurasian Woodcock
-European Golden-Plover
 European Golden-Plover
 European Starling
 European Storm-Petrel
 Evening Grosbeak
 Falcated Duck
 Far Eastern Curlew
-Far Eastern Curlew
 Fea's Petrel
 Ferruginous Hawk
-Ferruginous Pygmy-Owl
 Ferruginous Pygmy-Owl
 Field Sparrow
 Fish Crow
 Flammulated Owl
 Flesh-footed Shearwater
-Flesh-footed Shearwater
 Florida Scrub-Jay
 Fork-tailed Flycatcher
-Fork-tailed Storm-Petrel
 Fork-tailed Storm-Petrel
 Fork-tailed Swift
 Forster's Tern
@@ -367,13 +301,9 @@ Franklin's Gull
 Gadwall
 Gambel's Quail
 Garganey
-Garganey
 Gila Woodpecker
-Gila Woodpecker
-Gilded Flicker
 Gilded Flicker
 Glaucous Gull
-Glaucous-winged Gull
 Glaucous-winged Gull
 Glossy Ibis
 Golden Eagle
@@ -387,7 +317,6 @@ Grasshopper Sparrow
 Gray Catbird
 Gray Flycatcher
 Gray Hawk
-Gray Hawk
 Gray Jay
 Gray Kingbird
 Gray Nightjar
@@ -395,10 +324,7 @@ Gray Partridge
 Gray Vireo
 Gray-backed Tern
 Gray-cheeked Thrush
-Gray-cheeked Thrush
 Gray-headed Chickadee
-Gray-headed Chickadee
-Gray-tailed Tattler
 Gray-tailed Tattler
 Great Auk
 Great Black Hawk
@@ -409,11 +335,8 @@ Great Crested Flycatcher
 Great Egret
 Great Frigatebird ('Iwa)
 Great Gray Owl
-Great Gray Owl
 Great Horned Owl
 Great Knot
-Great Knot
-Great Shearwater
 Great Shearwater
 Great Skua
 Great Spotted Woodpecker
@@ -430,10 +353,8 @@ Great-tailed Grackle
 Green Heron
 Green Jay
 Green Kingfisher
-Green Kingfisher
 Green Parakeet
 Green Pheasant
-Green Sandpiper
 Green Sandpiper
 Green-breasted Mango
 Green-winged Teal
@@ -442,11 +363,9 @@ Groove-billed Ani
 Gull-billed Tern
 Gunnison Sage-Grouse
 Gyrfalcon
-Gyrfalcon
 Hairy Woodpecker
 Hammond's Flycatcher
 Harlequin Duck
-Harris's Hawk
 Harris's Hawk
 Harris's Sparrow
 Hawaii Amakihi
@@ -460,12 +379,10 @@ Hawaiian Hawk ('Io)
 Hawaiian Petrel (Ua'u)
 Hawaiian Stilt (Ae'o)
 Heermann's Gull
-Heermann's Gull
 Henslow's Sparrow
 Hermit Thrush
 Hermit Warbler
 Herring Gull
-Hoary Redpoll
 Hoary Redpoll
 Hooded Merganser
 Hooded Oriole
@@ -473,8 +390,6 @@ Hooded Warbler
 Hook-billed Kite
 Horned Grebe
 Horned Lark
-Horned Lark
-Horned Puffin
 Horned Puffin
 House Finch
 House Wren
@@ -497,10 +412,8 @@ Kentucky Warbler
 Key West Quail-Dove
 Killdeer
 King Eider
-King Eider
 King Rail
 Kirtland's Warbler
-Kittlitz's Murrelet
 Kittlitz's Murrelet
 La Sagra's Flycatcher
 Ladder-backed Woodpecker
@@ -514,14 +427,11 @@ Lazuli Bunting
 Le Conte's Sparrow
 Le Conte's Thrasher
 Leach's Storm-Petrel
-Leach's Storm-Petrel
-Least Auklet
 Least Auklet
 Least Bittern
 Least Flycatcher
 Least Grebe
 Least Sandpiper
-Least Storm-Petrel
 Least Storm-Petrel
 Least Tern
 Lesser Black-backed Gull
@@ -529,7 +439,6 @@ Lesser Goldfinch
 Lesser Nighthawk
 Lesser Prairie-Chicken
 Lesser Scaup
-Lesser White-fronted Goose
 Lesser White-fronted Goose
 Lesser Yellowlegs
 Lewis's Woodpecker
@@ -540,7 +449,6 @@ Little Blue Heron
 Little Curlew
 Little Egret
 Little Gull
-Little Ringed Plover
 Little Ringed Plover
 Little Stint
 Loggerhead Kingbird
@@ -555,23 +463,17 @@ Long-tailed Jaeger
 Long-toed Stint
 Louisiana Waterthrush
 Lucifer Hummingbird
-Lucifer Hummingbird
 Lucy's Warbler
 MacGillivray's Warbler
-Magnificent Frigatebird
 Magnificent Frigatebird
 Magnolia Warbler
 Mallard
 Mangrove Cuckoo
 Manx Shearwater
-Manx Shearwater
 Marbled Godwit
 Marbled Murrelet
-Marbled Murrelet
-Marsh Sandpiper
 Marsh Sandpiper
 Marsh Wren
-Masked Booby
 Masked Booby
 Masked Booby ('A)
 Masked Duck
@@ -586,7 +488,6 @@ Millerbird
 Mississippi Kite
 Mitred Parakeet
 Monk Parakeet
-Montezuma Quail
 Montezuma Quail
 Mottled Duck
 Mottled Petrel
@@ -609,10 +510,8 @@ Northern Cardinal
 Northern Flicker
 Northern Fulmar
 Northern Gannet
-Northern Gannet
 Northern Goshawk
 Northern Harrier
-Northern Hawk Owl
 Northern Hawk Owl
 Northern Lapwing
 Northern Mockingbird
@@ -624,7 +523,6 @@ Northern Saw-whet Owl
 Northern Shoveler
 Northern Shrike
 Northern Waterthrush
-Northern Wheatear
 Northern Wheatear
 Northwestern Crow
 Nuttall's Woodpecker
@@ -647,17 +545,14 @@ Pacific Loon
 Pacific Wren
 Pacific-slope Flycatcher
 Paint-billed Crake
-Paint-billed Crake
 Painted Bunting
 Painted Redstart
 Palila
 Palm Warbler
 Parakeet Auklet
-Parakeet Auklet
 Parasitic Jaeger
 Passenger Pigeon
 Pectoral Sandpiper
-Pelagic Cormorant
 Pelagic Cormorant
 Peregrine Falcon
 Phainopepla
@@ -667,19 +562,15 @@ Pied Oystercatcher
 Pied Stilt
 Pied-billed Grebe
 Pigeon Guillemot
-Pigeon Guillemot
 Pileated Woodpecker
 Pine Grosbeak
 Pine Siskin
 Pine Warbler
 Pink-footed Goose
-Pink-footed Goose
-Pink-footed Shearwater
 Pink-footed Shearwater
 Pin-tailed Snipe
 Pinyon Jay
 Piping Plover
-Plain Chachalaca
 Plain Chachalaca
 Plumbeous Vireo
 Pomarine Jaeger
@@ -696,16 +587,11 @@ Purple Swamphen
 Pygmy Nuthatch
 Pyrrhuloxia
 Razorbill
-Razorbill
 Red Crossbill
-Red Crossbill
-Red Knot
 Red Knot
 Red Phalarope
 Red-bellied Woodpecker
 Red-billed Pigeon
-Red-billed Tropicbird
-Red-billed Tropicbird
 Red-billed Tropicbird
 Red-breasted Goose
 Red-breasted Merganser
@@ -716,15 +602,11 @@ Red-crowned Parrot
 Reddish Egret
 Red-eyed Vireo
 Red-faced Cormorant
-Red-faced Cormorant
 Red-faced Warbler
-Red-footed Booby
-Red-footed Booby
 Red-footed Booby
 Red-footed Booby ('A)
 Redhead
 Red-headed Woodpecker
-Red-legged Kittiwake
 Red-legged Kittiwake
 Red-naped Sapsucker
 Red-necked Avocet
@@ -734,16 +616,12 @@ Red-necked Stint
 Red-shouldered Hawk
 Red-tailed Hawk
 Red-tailed Tropicbird
-Red-tailed Tropicbird
 Red-tailed Tropicbird (Koa'e kea)
 Red-throated Loon
 Red-throated Pipit
-Red-throated Pipit
 Red-winged Blackbird
 Rhinoceros Auklet
-Rhinoceros Auklet
 Ring-billed Gull
-Ringed Kingfisher
 Ringed Kingfisher
 Ring-necked Duck
 Ring-necked Pheasant
@@ -751,12 +629,10 @@ Rivoli's Hummingbird
 Roadside Hawk
 Rock Pigeon
 Rock Ptarmigan
-Rock Ptarmigan
 Rock Sandpiper
 Rock Wren
 Roseate Spoonbill
 Roseate Tern
-Rose-breasted Grosbeak
 Rose-breasted Grosbeak
 Ross's Goose
 Ross's Gull
@@ -768,8 +644,6 @@ Ruddy Duck
 Ruddy Ground-Dove
 Ruddy Quail-Dove
 Ruddy Shelduck
-Ruddy Shelduck
-Ruddy Turnstone
 Ruddy Turnstone
 Ruff
 Ruffed Grouse
@@ -777,7 +651,6 @@ Rufous Hummingbird
 Rufous-capped Warbler
 Rufous-crowned Sparrow
 Rufous-winged Sparrow
-Rusty Blackbird
 Rusty Blackbird
 Sabine's Gull
 Sage Thrasher
@@ -799,12 +672,10 @@ Semipalmated Sandpiper
 Sharp-shinned Hawk
 Sharp-tailed Grouse
 Sharp-tailed Sandpiper
-Sharp-tailed Sandpiper
 Shiny Cowbird
 Short-billed Dowitcher
 Short-eared Owl
 Short-tailed Hawk
-Short-tailed Shearwater
 Short-tailed Shearwater
 Shy Albatross
 Sky Lark
@@ -818,14 +689,11 @@ Snow Bunting
 Snow Goose
 Snowy Egret
 Snowy Owl
-Snowy Owl
 Snowy Plover
 Solitary Sandpiper
 Song Sparrow
 Sooty Grouse
 Sooty Shearwater
-Sooty Shearwater
-Sooty Tern
 Sooty Tern
 Sora
 South Polar Skua
@@ -836,17 +704,12 @@ Spotted Crake
 Spotted Dove
 Spotted Owl
 Spotted Rail
-Spotted Rail
 Spotted Redshank
-Spotted Redshank
-Spotted Sandpiper
 Spotted Sandpiper
 Sprague's Pipit
 Spruce Grouse
-Spruce Grouse
 Spur-winged Lapwing
 Steller's Eider
-Steller's Jay
 Steller's Jay
 Steller's Sea Eagle
 Stilt Sandpiper
@@ -864,10 +727,8 @@ Terek Sandpiper
 Thayer's Gull
 Thick-billed Kingbird
 Thick-billed Murre
-Thick-billed Murre
 Thick-billed Parrot
 Three-toed Woodpecker
-Townsend's Solitaire
 Townsend's Solitaire
 Townsend's Warbler
 Tree Swallow
@@ -877,9 +738,6 @@ Tropical Kingbird
 Tropical Parula
 Trumpeter Swan
 Tufted Duck
-Tufted Duck
-Tufted Puffin
-Tufted Puffin
 Tufted Puffin
 Tufted Titmouse
 Tundra Swan
@@ -887,12 +745,10 @@ Turkey Vulture
 Upland Sandpiper
 Varied Bunting
 Varied Thrush
-Varied Thrush
 Vaux's Swift
 Veery
 Vermilion Flycatcher
 Vesper Sparrow
-Violet-crowned Hummingbird
 Violet-crowned Hummingbird
 Violet-green Swallow
 Virginia Rail
@@ -903,14 +759,12 @@ Wedge-rumped Storm-Petrel
 Western Bluebird
 Western Grebe
 Western Gull
-Western Gull
 Western Kingbird
 Western Meadowlark
 Western Reef-Heron
 Western Sandpiper
 Western Screech-Owl
 Whimbrel
-Whiskered Auklet
 Whiskered Auklet
 Whiskered Screech-Owl
 Whiskered Tern
@@ -921,33 +775,26 @@ White-cheeked Pintail
 White-collared Swift
 White-crowned Sparrow
 White-eared Hummingbird
-White-eared Hummingbird
 White-eyed Flycatcher
 White-eyed Vireo
 White-faced Ibis
-White-faced Storm-Petrel
 White-faced Storm-Petrel
 White-headed Stilt
 White-headed Woodpecker
 White-rumped Sandpiper
 White-tailed Eagle
 White-tailed Hawk
-White-tailed Hawk
 White-tailed Kite
 White-tailed Ptarmigan
-White-tailed Ptarmigan
-White-tailed Tropicbird
 White-tailed Tropicbird
 White-tailed Tropicbird (Koa'e kea)
 White-throated Sparrow
 White-throated Swift
 White-tipped Dove
 White-winged Crossbill
-White-winged Crossbill
 White-winged Dove
 White-winged Scoter
 White-winged Tern
-Whooper Swan
 Whooper Swan
 Whooping Crane
 Wild Turkey
@@ -955,26 +802,21 @@ Willet
 Williamson's Sapsucker
 Willow Flycatcher
 Willow Ptarmigan
-Willow Ptarmigan
 Wilson's Phalarope
 Wilson's Plover
 Wilson's Snipe
 Wilson's Storm-Petrel
-Wilson's Storm-Petrel
 Wilson's Warbler
 Winter Wren
 Wood Duck
-Wood Sandpiper
 Wood Sandpiper
 Wood Stork
 Wood Thrush
 Woodhouse's Scrub-Jay
 Worm-eating Warbler
 Xantus's Murrelet
-Xantus's Murrelet
 Yellow Bittern
 Yellow Rail
-Yellow Wagtail
 Yellow Wagtail
 Yellow Warbler
 Yellow-bellied Flycatcher
@@ -982,10 +824,8 @@ Yellow-bellied Sapsucker
 Yellow-billed Cuckoo
 Yellow-billed Loon
 Yellow-billed Magpie
-Yellow-billed Magpie
 Yellow-crowned Night-Heron
 Yellow-eyed Junco
-Yellow-footed Gull
 Yellow-footed Gull
 Yellow-green Vireo
 Yellow-headed Blackbird
@@ -996,5 +836,4 @@ Yellow-rumped Warbler
 Yellow-throated Vireo
 Yellow-throated Warbler
 Zenaida Dove
-Zone-tailed Hawk
 Zone-tailed Hawk
