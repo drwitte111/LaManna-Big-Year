@@ -1888,6 +1888,9 @@ window.addBird = async function() {
 }
 
 window.deleteBird = async function(id) {
+  const b = cachedBirds.find(x => x.id === id);
+  const label = b ? `"${b.species}"` : 'this entry';
+  if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
   try {
     await deleteDoc(doc(db, 'users', currentUser, 'birds', id));
     cachedBirds = cachedBirds.filter(b => b.id !== id);
