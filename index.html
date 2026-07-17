@@ -801,6 +801,54 @@ window.closeModal = function() {
   if (el) el.remove();
 }
 
+// ── BIRD PHOTO (Wikipedia, no API key needed) ───────────────────────────
+async function fetchBirdImage(species) {
+  try {
+    const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(species)}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.thumbnail?.source) {
+        return { img: data.thumbnail.source, extract: data.extract, url: data.content_urls?.desktop?.page };
+      }
+    }
+  } catch(e) { /* fall through to search */ }
+  try {
+    const searchRes = await fetch(`https://en.wikipedia.org/w/api.php?origin=*&action=query&list=search&srsearch=${encodeURIComponent(species + ' bird')}&format=json&srlimit=1`);
+    const searchData = await searchRes.json();
+    const title = searchData?.query?.search?.[0]?.title;
+    if (title) {
+      const res2 = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
+      if (res2.ok) {
+        const data2 = await res2.json();
+        if (data2.thumbnail?.source) {
+          return { img: data2.thumbnail.source, extract: data2.extract, url: data2.content_urls?.desktop?.page };
+        }
+      }
+    }
+  } catch(e) { /* no image available */ }
+  return null;
+}
+
+window.showBirdImage = async function(species) {
+  showModal(`
+    <div class="modal-title">${esc(species)}</div>
+    <div class="modal-body" id="bird-image-modal-body">Loading photo…</div>
+    <div class="modal-actions"><button class="btn-logout" onclick="closeModal()">Close</button></div>
+  `);
+  const result = await fetchBirdImage(species);
+  const bodyEl = document.getElementById('bird-image-modal-body');
+  if (!bodyEl) return; // modal was closed before the fetch finished
+  if (result && result.img) {
+    bodyEl.innerHTML = `
+      <img src="${result.img}" alt="${esc(species)}" style="width:100%;border-radius:6px;margin-bottom:0.75rem;display:block;">
+      ${result.extract ? `<div style="font-size:0.85rem;color:rgba(245,237,214,0.7);line-height:1.5;">${esc(result.extract)}</div>` : ''}
+      ${result.url ? `<div style="margin-top:0.5rem;"><a href="${result.url}" target="_blank" rel="noopener" style="color:var(--gold);font-size:0.8rem;">View on Wikipedia →</a></div>` : ''}
+    `;
+  } else {
+    bodyEl.innerHTML = `<div class="empty-state" style="padding:1rem 0;">No photo found for this species.</div>`;
+  }
+}
+
 function hideLoading() {
   document.getElementById('loading-overlay').classList.add('hidden');
 }
@@ -2092,7 +2140,7 @@ async function renderActivity() {
           <span class="msg-time">${formatTime(it.addedAt)}</span>
         </div>
         <div class="msg-text">
-          🐦 <strong>${esc(it.species)}</strong> <span class="bird-score ${scoreCls}">${scoreLabel}</span>
+          🐦 <strong style="cursor:pointer;" onclick="window.showBirdImage('${esc(it.species).replace(/'/g, "\\'")}')" title="Click for a photo">${esc(it.species)}</strong> <span class="bird-score ${scoreCls}">${scoreLabel}</span>
           ${it.location ? `<br><span class="bird-location">📍 ${esc(it.location)}</span>` : ''}
           ${it.note ? `<br><span class="bird-note">${esc(it.note)}</span>` : ''}
         </div>
@@ -2236,7 +2284,7 @@ function renderProfileBirds() {
     const scoreCls = det === 'seen' ? 'seen' : 'heard';
     const matched = !isMe && myLowerSpecies.has(b.species.toLowerCase());
     return `
-    <div class="bird-card${matched ? ' bird-card-matched' : ''}">
+    <div class="bird-card${matched ? ' bird-card-matched' : ''}" style="cursor:pointer;" onclick="window.showBirdImage('${esc(b.species).replace(/'/g, "\\'")}')" title="Click for a photo">
       <div class="bird-name">🐦 ${esc(b.species)} <span class="bird-score ${scoreCls}">${scoreLabel}</span></div>
       ${b.location ? `<div class="bird-location">📍 ${esc(b.location)}</div>` : ''}
       <div class="bird-date">${b.date || ''}</div>
