@@ -1674,6 +1674,7 @@ async function renderActivity() {
     snap.docs.forEach(d => {
       const b = d.data();
       items.push({
+        key,
         display: u.display || key,
         species: b.species,
         location: b.location,
@@ -1704,8 +1705,8 @@ async function renderActivity() {
     return `
       <div class="message-card">
         <div class="msg-header">
-          <div class="msg-avatar">${initials(it.display)}</div>
-          <span class="msg-author">${esc(it.display)}</span>
+          <div class="msg-avatar" style="cursor:pointer;" onclick="window.viewProfile('${it.key}')">${initials(it.display)}</div>
+          <span class="msg-author" style="cursor:pointer;" onclick="window.viewProfile('${it.key}')">${esc(it.display)}</span>
           <span class="msg-time">${formatTime(it.addedAt)}</span>
         </div>
         <div class="msg-text">
@@ -1720,6 +1721,7 @@ async function renderActivity() {
 
 async function renderProfiles() {
   await loadAllUsers();
+  const ranked = [];
   for (const [key, u] of Object.entries(allUsersCache)) {
     const snap = await getDocs(collection(db, 'users', key, 'birds'));
     const birds = snap.docs.map(d => d.data());
