@@ -393,7 +393,11 @@
           <button type="button" class="detection-btn" id="btn-heard" onclick="setDetection('heard')">👂 Heard <span class="pts-badge">1 pt</span></button>
         </div>
       </div>
-      <button class="btn-add-bird" id="add-bird-btn" onclick="addBird()">+ Log this bird</button>
+      <div id="edit-mode-label" style="display:none;font-size:0.78rem;color:var(--gold);font-style:italic;margin-bottom:0.5rem;">Editing this entry — update the fields above and save, or cancel.</div>
+      <div style="display:flex;gap:0.5rem;align-items:center;">
+        <button class="btn-add-bird" id="add-bird-btn" onclick="addBird()">+ Log this bird</button>
+        <button class="btn-logout" id="cancel-edit-btn" onclick="cancelEditBird()" style="display:none;">Cancel edit</button>
+      </div>
       <div id="bird-error" class="form-error"></div>
     </div>
     <hr class="section-rule">
@@ -1172,6 +1176,7 @@ window.deleteMessage = async function(id) {
 async function renderBirdsPage(userKey, isOwn) {
   birdViewUser = userKey;
   birdViewReadonly = !isOwn;
+  if (typeof cancelEditBird === 'function') cancelEditBird();
 
   const display = allUsersCache[userKey]?.display || userKey;
   document.getElementById('birds-title').textContent = isOwn ? 'My Birds' : display + "'s Birds";
@@ -1229,12 +1234,14 @@ window.renderBirdCards = function() {
   }
   grid.innerHTML = filtered.map(b => {
     const delBtn = !birdViewReadonly
-      ? `<button class="bird-del" onclick="window.deleteBird('${b.id}')" title="Remove">✕</button>` : '';
+      ? `<button class="bird-del" onclick="event.stopPropagation(); window.deleteBird('${b.id}')" title="Remove">✕</button>` : '';
     const det = b.detection || (b.score === 2 ? 'seen' : 'heard');
     const scoreLabel = det === 'seen' ? '👁 Seen · 2pts' : '👂 Heard · 1pt';
     const scoreCls = det === 'seen' ? 'seen' : 'heard';
+    const editAttrs = !birdViewReadonly
+      ? `onclick="window.startEditBird('${b.id}')" style="cursor:pointer;" title="Click to edit"` : '';
     return `
-      <div class="bird-card">
+      <div class="bird-card" ${editAttrs}>
         ${delBtn}
         <div class="bird-name">🐦 ${esc(b.species)} <span class="bird-score ${scoreCls}">${scoreLabel}</span></div>
         ${b.location ? `<div class="bird-location">📍 ${esc(b.location)}</div>` : ''}
@@ -1418,8 +1425,90 @@ window.setDetection = function(type) {
   document.getElementById('btn-heard').classList.toggle('active', type === 'heard');
 }
 
+// ── EDIT BIRD ──────────────────────────────────────────────────────────────
+let editingBirdId = null;
+
+window.startEditBird = function(id) {
+  if (birdViewReadonly) return;
+  const b = cachedBirds.find(x => x.id === id);
+  if (!b) return;
+  editingBirdId = id;
+  document.getElementById('bird-species').value = b.species;
+  document.getElementById('bird-location').value = b.location || '';
+  document.getElementById('bird-date').value = b.date || '';
+  document.getElementById('bird-note').value = b.note || '';
+  window._selectedLat = (b.lat !== undefined) ? b.lat : null;
+  window._selectedLng = (b.lng !== undefined) ? b.lng : null;
+  setDetection(b.detection || (b.score === 2 ? 'seen' : 'heard'));
+  document.getElementById('add-bird-btn').textContent = 'Update bird';
+  document.getElementById('cancel-edit-btn').style.display = 'inline-block';
+  document.getElementById('edit-mode-label').style.display = 'block';
+  document.getElementById('bird-error').textContent = '';
+  document.getElementById('add-bird-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+window.cancelEditBird = function() {
+  editingBirdId = null;
+  document.getElementById('bird-species').value = '';
+  document.getElementById('bird-location').value = '';
+  document.getElementById('bird-note').value = '';
+  document.getElementById('bird-date').valueAsDate = new Date();
+  window._selectedLat = null; window._selectedLng = null;
+  setDetection('seen');
+  document.getElementById('add-bird-btn').textContent = '+ Log this bird';
+  document.getElementById('cancel-edit-btn').style.display = 'none';
+  document.getElementById('edit-mode-label').style.display = 'none';
+  document.getElementById('bird-error').textContent = '';
+}
+
+async function updateBirdEntry() {
+  const species = document.getElementById('bird-species').value.trim();
+  const location = document.getElementById('bird-location').value.trim();
+  const date = document.getElementById('bird-date').value;
+  const note = document.getElementById('bird-note').value.trim();
+  const errEl = document.getElementById('bird-error');
+  const btn = document.getElementById('add-bird-btn');
+  errEl.textContent = '';
+
+  if (!species) { errEl.textContent = 'Enter a species name.'; return; }
+
+  if (!isBigYearActive()) {
+    errEl.style.color = '#e07060';
+    errEl.textContent = 'The Big Year window is closed — entries can\'t be edited right now.';
+    return;
+  }
+  errEl.style.color = '';
+
+  const score = currentDetection === 'seen' ? 2 : 1;
+  const detection = currentDetection;
+  const dateVal = date || new Date().toISOString().split('T')[0];
+  const lat = (window._selectedLat !== undefined) ? window._selectedLat : null;
+  const lng = (window._selectedLng !== undefined) ? window._selectedLng : null;
+
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    await updateDoc(doc(db, 'users', currentUser, 'birds', editingBirdId), {
+      species, location, note, score, detection, date: dateVal,
+      ...(lat !== null ? { lat, lng } : {})
+    });
+    const idx = cachedBirds.findIndex(b => b.id === editingBirdId);
+    if (idx >= 0) {
+      cachedBirds[idx] = { ...cachedBirds[idx], species, location, note, score, detection, lat, lng, date: dateVal };
+    }
+    cancelEditBird();
+    renderBirdCards();
+  } catch(e) {
+    errEl.textContent = 'Update failed.';
+    console.error(e);
+    btn.disabled = false;
+    btn.textContent = 'Update bird';
+  }
+}
+
 // ── ADD BIRD ───────────────────────────────────────────────────────────────
 window.addBird = async function() {
+  if (editingBirdId) { await updateBirdEntry(); return; }
+
   const species = document.getElementById('bird-species').value.trim();
   const location = document.getElementById('bird-location').value.trim();
   const date = document.getElementById('bird-date').value;
