@@ -394,6 +394,7 @@ Horned Lark
 Horned Puffin
 House Finch
 House Wren
+House Sparrow
 Hudsonian Godwit
 Hutton's Vireo
 Ibisbill
