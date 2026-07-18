@@ -370,7 +370,7 @@
       <div class="login-subtitle">Family Bird Log · 2025</div>
       <div class="form-group">
         <label class="form-label">Your name</label>
-        <input id="login-username" class="form-input" type="text" placeholder="e.g. Mom, David, Nadine…" autocomplete="off">
+        <input id="login-username" class="form-input" type="text" placeholder="e.g. Mom, David, Jake…" autocomplete="off">
       </div>
       <div class="form-group">
         <label class="form-label">Password</label>
@@ -2012,7 +2012,11 @@ async function renderSharedPage() {
     return;
   }
 
-  listEl.innerHTML = ids.map(id => {
+  listEl.innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:0.75rem;">
+      <button class="btn-add-bird" onclick="window.acceptAllShares()">Log all (${ids.length})</button>
+    </div>
+  ` + ids.map(id => {
     const s = sharedItemsById[id];
     const det = s.detection === 'heard' ? 'heard' : 'seen';
     const scoreLabel = det === 'seen' ? '👁 Seen · 2pts' : '👂 Heard · 1pt';
@@ -2046,39 +2050,71 @@ window.openShareConfirm = function(shareId) {
   `);
 }
 
+// Applies one shared bird into the current user's list, respecting the same
+// "only upgrade if better" dedup rule as manual add. myBirdsMap is mutated in
+// place so a batch of shares also dedupes against each other, not just
+// against the birds that existed before the batch started.
+async function logShareIntoBirds(s, myBirdsMap) {
+  const key = s.species.toLowerCase();
+  const newScore = s.score || (s.detection === 'seen' ? 2 : 1);
+  const existing = myBirdsMap[key];
+
+  if (existing) {
+    if (newScore > existing.score) {
+      await updateDoc(doc(db, 'users', currentUser, 'birds', existing.id), {
+        score: newScore, detection: s.detection,
+        location: s.location || existing.location, note: s.note || existing.note,
+        date: s.date || existing.date
+      });
+      myBirdsMap[key] = { ...existing, score: newScore, detection: s.detection,
+        location: s.location || existing.location, note: s.note || existing.note, date: s.date || existing.date };
+    }
+    // Existing score already equal or better — nothing to change.
+  } else {
+    const ref = await addDoc(collection(db, 'users', currentUser, 'birds'), {
+      species: s.species, location: s.location || '', note: s.note || '',
+      score: newScore, detection: s.detection || 'seen',
+      date: s.date || new Date().toISOString().split('T')[0],
+      addedAt: serverTimestamp()
+    });
+    myBirdsMap[key] = { id: ref.id, score: newScore, location: s.location || '', date: s.date || '', note: s.note || '' };
+  }
+}
+
+async function loadMyBirdsMap() {
+  const mySnap = await getDocs(collection(db, 'users', currentUser, 'birds'));
+  const map = {};
+  mySnap.docs.forEach(d => {
+    const b = d.data();
+    map[b.species.toLowerCase()] = { id: d.id, score: b.score || 1, location: b.location || '', date: b.date || '', note: b.note || '' };
+  });
+  return map;
+}
+
 window.acceptShare = async function(shareId) {
   const s = sharedItemsById[shareId];
   if (!s) return;
   try {
-    // Dedup against the recipient's existing birds, same logic as manual add.
-    const mySnap = await getDocs(collection(db, 'users', currentUser, 'birds'));
-    const existing = mySnap.docs.find(d => d.data().species.toLowerCase() === s.species.toLowerCase());
-    const newScore = s.score || (s.detection === 'seen' ? 2 : 1);
-
-    if (existing) {
-      const exData = existing.data();
-      const exScore = exData.score || 1;
-      if (newScore > exScore) {
-        await updateDoc(doc(db, 'users', currentUser, 'birds', existing.id), {
-          score: newScore, detection: s.detection,
-          location: s.location || exData.location, note: s.note || exData.note,
-          date: s.date || exData.date
-        });
-      }
-      // If existing score is already equal or better, nothing to update — just clear the share below.
-    } else {
-      await addDoc(collection(db, 'users', currentUser, 'birds'), {
-        species: s.species, location: s.location || '', note: s.note || '',
-        score: newScore, detection: s.detection || 'seen',
-        date: s.date || new Date().toISOString().split('T')[0],
-        addedAt: serverTimestamp()
-      });
-    }
-
+    const myBirdsMap = await loadMyBirdsMap();
+    await logShareIntoBirds(s, myBirdsMap);
     await deleteDoc(doc(db, 'users', currentUser, 'shares', shareId));
     closeModal();
     renderSharedPage();
   } catch(e) { console.error('acceptShare', e); closeModal(); }
+}
+
+window.acceptAllShares = async function() {
+  const ids = Object.keys(sharedItemsById);
+  if (!ids.length) return;
+  if (!confirm(`Log all ${ids.length} shared bird${ids.length > 1 ? 's' : ''} to your list?`)) return;
+  try {
+    const myBirdsMap = await loadMyBirdsMap();
+    for (const id of ids) {
+      await logShareIntoBirds(sharedItemsById[id], myBirdsMap);
+      await deleteDoc(doc(db, 'users', currentUser, 'shares', id));
+    }
+    renderSharedPage();
+  } catch(e) { console.error('acceptAllShares', e); }
 }
 
 window.dismissShare = async function(shareId) {
