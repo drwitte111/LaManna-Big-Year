@@ -497,6 +497,13 @@
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
       <div class="section-label" style="margin-bottom:0;">Your list · <span id="birds-count">0</span> species</div>
     </div>
+    <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;flex-wrap:wrap;">
+      <div class="detection-toggle" style="max-width:280px;margin-bottom:0;flex:1;" id="birds-det-toggle">
+        <button type="button" class="detection-btn active" id="bd-det-all" onclick="window.setBirdsDetFilter('all')">All</button>
+        <button type="button" class="detection-btn" id="bd-det-seen" onclick="window.setBirdsDetFilter('seen')">👁 Seen</button>
+        <button type="button" class="detection-btn" id="bd-det-heard" onclick="window.setBirdsDetFilter('heard')">👂 Heard</button>
+      </div>
+    </div>
     <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;">
       <input id="bird-search" class="search-input" type="text" placeholder="Filter species…" oninput="renderBirdCards()" style="flex:1;min-width:150px;margin-bottom:0;">
       <select id="bird-sort" class="form-input" style="max-width:170px;" onchange="renderBirdCards()">
@@ -1633,6 +1640,16 @@ async function renderBirdsPage(userKey, isOwn) {
   renderBirdCards();
 }
 
+let birdsDetFilter = 'all';
+
+window.setBirdsDetFilter = function(filter) {
+  birdsDetFilter = filter;
+  document.getElementById('bd-det-all').classList.toggle('active', filter === 'all');
+  document.getElementById('bd-det-seen').classList.toggle('active', filter === 'seen');
+  document.getElementById('bd-det-heard').classList.toggle('active', filter === 'heard');
+  renderBirdCards();
+}
+
 window.renderBirdCards = function() {
   const search = document.getElementById('bird-search').value.toLowerCase();
   const sortMode = document.getElementById('bird-sort')?.value || 'time';
@@ -1642,6 +1659,12 @@ window.renderBirdCards = function() {
   ) : cachedBirds.slice();
 
   filtered = filtered.slice();
+  if (birdsDetFilter !== 'all') {
+    filtered = filtered.filter(b => {
+      const det = b.detection || (b.score === 2 ? 'seen' : 'heard');
+      return det === birdsDetFilter;
+    });
+  }
   if (sortMode === 'name') {
     filtered.sort((a, b) => a.species.localeCompare(b.species));
   } else if (sortMode === 'location') {
@@ -1669,8 +1692,8 @@ window.renderBirdCards = function() {
 
   const grid = document.getElementById('birds-grid');
   if (!filtered.length) {
-    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">' +
-      (search ? 'No matches.' : 'Nothing logged yet — get outside!') + '</div>';
+    const msg = (search || birdsDetFilter !== 'all') ? 'No matches.' : 'Nothing logged yet — get outside!';
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">' + msg + '</div>';
     return;
   }
   grid.innerHTML = filtered.map(b => {
