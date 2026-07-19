@@ -846,6 +846,13 @@ function formatTime(ts) {
 
 function initials(name) { return String(name||'?').slice(0,2).toUpperCase(); }
 
+// Mimics a Firestore Timestamp's .toMillis() shape, for optimistic local
+// cache updates made before the real serverTimestamp() round-trips back.
+// Without this, a just-added/just-upgraded bird has no addedAt/updatedAt
+// locally and sorts as if it happened at time zero — pushing brand-new
+// entries to the bottom of "Most recent" sorts until the next full reload.
+function localTimestamp() { return { toMillis: () => Date.now() }; }
+
 // ── MODAL (generic, used by share-picker and shared-bird confirm) ──────────
 function showModal(innerHTML) {
   closeModal();
@@ -1933,7 +1940,8 @@ async function updateBirdEntry() {
     });
     const idx = cachedBirds.findIndex(b => b.id === editingBirdId);
     if (idx >= 0) {
-      cachedBirds[idx] = { ...cachedBirds[idx], species, location, note, score, detection, lat, lng, date: dateVal };
+      cachedBirds[idx] = { ...cachedBirds[idx], species, location, note, score, detection, lat, lng, date: dateVal,
+        ...(oldScore !== null && score !== oldScore ? { updatedAt: localTimestamp() } : {}) };
     }
     cancelEditBird();
     renderBirdCards();
@@ -2001,7 +2009,7 @@ window.addBird = async function() {
         score, detection, location: location || existing.location,
         note: note || existing.note, date: dateVal, updatedAt: serverTimestamp()
       });
-      cachedBirds[existingIdx] = { ...existing, score, detection, location: location || existing.location, note: note || existing.note, date: dateVal };
+      cachedBirds[existingIdx] = { ...existing, score, detection, location: location || existing.location, note: note || existing.note, date: dateVal, updatedAt: localTimestamp() };
       document.getElementById('bird-species').value = '';
       document.getElementById('bird-location').value = '';
       document.getElementById('bird-note').value = '';
@@ -2023,7 +2031,7 @@ window.addBird = async function() {
       date: dateVal,
       addedAt: serverTimestamp()
     });
-    cachedBirds.unshift({ id: ref.id, species, location, note, score, detection, lat, lng, date: dateVal });
+    cachedBirds.unshift({ id: ref.id, species, location, note, score, detection, lat, lng, date: dateVal, addedAt: localTimestamp() });
     document.getElementById('bird-species').value = '';
     document.getElementById('bird-location').value = '';
     document.getElementById('bird-note').value = '';
