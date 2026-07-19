@@ -5,6 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <title>LaManna Big Year</title>
 
+<!-- AUTO-UPDATE CHECK — runs before anything else. Fetches this same page
+     fresh (bypassing cache), fingerprints it, and compares to the version
+     seen on the previous launch. If they differ, force a one-time reload so
+     home-screen icons don't get stuck on a stale cached version. -->
+<script>
+(async function checkForUpdate() {
+  try {
+    const res = await fetch(window.location.pathname, { cache: 'no-store' });
+    const text = await res.text();
+    const fingerprint = text.length + '|' + text.slice(0, 200) + text.slice(-200);
+    const stored = localStorage.getItem('bigyear_page_fingerprint');
+    localStorage.setItem('bigyear_page_fingerprint', fingerprint);
+    if (stored && stored !== fingerprint) {
+      location.reload();
+    }
+  } catch(e) { /* offline or blocked — just continue loading normally */ }
+})();
+</script>
+
 <!-- iOS "Add to Home Screen" support -->
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="favicon-32.png" sizes="32x32">
