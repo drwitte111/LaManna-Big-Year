@@ -219,6 +219,11 @@
 
   /* PROFILES */
   .profiles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.75rem; }
+  .compare-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  .compare-col-header { font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--gold); margin-bottom: 0.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid rgba(200,149,42,0.25); }
+  @media (max-width: 700px) {
+    .compare-columns { grid-template-columns: 1fr; gap: 1.75rem; }
+  }
   .profile-card { background: rgba(245,237,214,0.04); border: 1px solid rgba(200,149,42,0.2); border-radius: 6px; padding: 1.25rem 1rem; text-align: center; cursor: pointer; transition: all 0.15s; }
   .profile-card:hover { background: rgba(200,149,42,0.08); border-color: rgba(200,149,42,0.4); }
   .profile-avatar-lg { width: 52px; height: 52px; border-radius: 50%; background: var(--sage); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 1.2rem; color: var(--cream); margin: 0 auto 0.6rem; border: 2px solid rgba(200,149,42,0.3); }
@@ -519,6 +524,34 @@
   <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
 </div>
 
+<!-- COMPARE PROFILES -->
+<div id="page-compare" class="page">
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">Compare Profiles</div>
+      <div class="page-subtitle">Pick two people to see what they've each found</div>
+    </div>
+    <div class="add-bird-grid" style="margin-bottom:1rem;">
+      <div>
+        <label class="form-label">Person A</label>
+        <select id="compare-select-a" class="form-input" onchange="window.renderCompareResults()"></select>
+      </div>
+      <div>
+        <label class="form-label">Person B</label>
+        <select id="compare-select-b" class="form-input" onchange="window.renderCompareResults()"></select>
+      </div>
+    </div>
+    <div class="detection-toggle" style="max-width:560px;margin-bottom:1.25rem;flex-wrap:wrap;" id="compare-filter-toggle">
+      <button type="button" class="detection-btn active" id="cf-all" onclick="window.setCompareFilter('all')">All birds</button>
+      <button type="button" class="detection-btn" id="cf-shared" onclick="window.setCompareFilter('shared')">Shared</button>
+      <button type="button" class="detection-btn" id="cf-unique" onclick="window.setCompareFilter('unique')">Unique to each</button>
+      <button type="button" class="detection-btn" id="cf-diff" onclick="window.setCompareFilter('diffscore')">Different score</button>
+    </div>
+    <div id="compare-results"><div class="empty-state">Choose two people above to compare.</div></div>
+  </div>
+  <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
+</div>
+
 <!-- PROFILE VIEW -->
 <div id="page-profile-view" class="page">
   <div class="content" id="profile-view-content"></div>
@@ -709,6 +742,7 @@ const NAV_ITEMS = [
   { page: 'activity',  label: 'Activity' },
   { page: 'shared',    label: 'Shared' },
   { page: 'profiles',  label: 'Family' },
+  { page: 'compare',   label: 'Compare Profiles' },
   { page: 'countdown', label: 'Countdown' },
   { page: 'myprofile', label: 'My Profile' },
 ];
@@ -888,6 +922,7 @@ window.showPage = function(name) {
   if (name === 'activity') renderActivity();
   if (name === 'shared') renderSharedPage();
   if (name === 'profiles') renderProfiles();
+  if (name === 'compare') renderComparePage();
   if (name === 'myprofile') renderMyProfile();
   if (name === 'countdown') renderCountdown();
 }
@@ -2328,6 +2363,132 @@ function renderProfileBirds() {
     </div>`;
   }).join('');
 }
+
+// ── COMPARE PROFILES ────────────────────────────────────────────────────
+let compareState = { filter: 'all' };
+
+async function renderComparePage() {
+  await loadAllUsers();
+  const people = Object.entries(allUsersCache).filter(([key]) => key !== '__admin__');
+  const selA = document.getElementById('compare-select-a');
+  const selB = document.getElementById('compare-select-b');
+  if (!selA || !selB) return;
+
+  const prevA = selA.value, prevB = selB.value;
+  const opts = '<option value="">Select…</option>' +
+    people.map(([key, u]) => `<option value="${key}">${esc(u.display || key)}</option>`).join('');
+  selA.innerHTML = opts;
+  selB.innerHTML = opts;
+
+  // Keep prior selections if they still exist; otherwise default to first two people.
+  if (prevA && allUsersCache[prevA]) selA.value = prevA;
+  else if (people[0]) selA.value = people[0][0];
+  if (prevB && allUsersCache[prevB]) selB.value = prevB;
+  else if (people[1]) selB.value = people[1][0];
+
+  window.renderCompareResults();
+}
+
+window.setCompareFilter = function(filter) {
+  compareState.filter = filter;
+  document.getElementById('cf-all').classList.toggle('active', filter === 'all');
+  document.getElementById('cf-shared').classList.toggle('active', filter === 'shared');
+  document.getElementById('cf-unique').classList.toggle('active', filter === 'unique');
+  document.getElementById('cf-diff').classList.toggle('active', filter === 'diffscore');
+  window.renderCompareResults();
+}
+
+window.renderCompareResults = async function() {
+  const resultsEl = document.getElementById('compare-results');
+  const keyA = document.getElementById('compare-select-a')?.value;
+  const keyB = document.getElementById('compare-select-b')?.value;
+  if (!resultsEl) return;
+
+  if (!keyA || !keyB) {
+    resultsEl.innerHTML = '<div class="empty-state">Choose two people above to compare.</div>';
+    return;
+  }
+  if (keyA === keyB) {
+    resultsEl.innerHTML = '<div class="empty-state">Pick two different people.</div>';
+    return;
+  }
+
+  resultsEl.innerHTML = '<div class="empty-state">Loading…</div>';
+
+  const [snapA, snapB] = await Promise.all([
+    getDocs(collection(db, 'users', keyA, 'birds')),
+    getDocs(collection(db, 'users', keyB, 'birds'))
+  ]);
+  const birdsA = snapA.docs.map(d => d.data());
+  const birdsB = snapB.docs.map(d => d.data());
+
+  // Best score per species for each person (guards against any duplicate entries).
+  function bestScoreMap(birds) {
+    const m = {};
+    birds.forEach(b => {
+      const k = b.species.toLowerCase();
+      const s = b.score || (b.detection === 'seen' ? 2 : 1);
+      if (!(k in m) || s > m[k]) m[k] = s;
+    });
+    return m;
+  }
+  const scoresA = bestScoreMap(birdsA);
+  const scoresB = bestScoreMap(birdsB);
+  const lowerA = new Set(Object.keys(scoresA));
+  const lowerB = new Set(Object.keys(scoresB));
+
+  const nameA = esc(allUsersCache[keyA]?.display || keyA);
+  const nameB = esc(allUsersCache[keyB]?.display || keyB);
+  const filter = compareState.filter;
+
+  function buildColumn(birds, otherLowerSet, otherScoreMap, name) {
+    let list = birds.slice().sort((a, b) => a.species.localeCompare(b.species));
+    const key = b => b.species.toLowerCase();
+    if (filter === 'shared') list = list.filter(b => otherLowerSet.has(key(b)));
+    if (filter === 'unique') list = list.filter(b => !otherLowerSet.has(key(b)));
+    if (filter === 'diffscore') list = list.filter(b => {
+      const k = key(b);
+      const myScore = b.score || (b.detection === 'seen' ? 2 : 1);
+      return otherLowerSet.has(k) && otherScoreMap[k] !== myScore;
+    });
+
+    const cardsHTML = list.length ? list.map(b => {
+      const k = key(b);
+      const det = b.detection || (b.score === 2 ? 'seen' : 'heard');
+      const scoreLabel = det === 'seen' ? '👁 Seen · 2pts' : '👂 Heard · 1pt';
+      const scoreCls = det === 'seen' ? 'seen' : 'heard';
+      const shared = otherLowerSet.has(k);
+      const myScore = b.score || (det === 'seen' ? 2 : 1);
+      const diffs = shared && otherScoreMap[k] !== myScore;
+      const otherLabel = diffs ? (otherScoreMap[k] === 2 ? '👁 Seen' : '👂 Heard') : '';
+      return `
+        <div class="bird-card${shared ? ' bird-card-matched' : ''}" style="cursor:pointer;" onclick="window.showBirdImage('${esc(b.species).replace(/'/g, "\\'")}')" title="Click for a photo">
+          <div class="bird-name">🐦 ${esc(b.species)} <span class="bird-score ${scoreCls}">${scoreLabel}</span></div>
+          ${diffs ? `<div style="font-size:0.72rem;color:var(--rust);margin-top:0.15rem;">${name.split(' ')[0]} has: ${otherLabel}</div>` : ''}
+          ${b.location ? `<div class="bird-location">📍 ${esc(b.location)}</div>` : ''}
+          <div class="bird-date">${b.date || ''}</div>
+        </div>`;
+    }).join('') : `<div class="empty-state">${
+        filter === 'shared' ? 'No shared species.' :
+        filter === 'unique' ? 'Nothing unique here.' :
+        filter === 'diffscore' ? 'No score differences.' :
+        'No birds logged yet.'
+      }</div>`;
+
+    return `
+      <div>
+        <div class="compare-col-header">${name} <span style="color:rgba(245,237,214,0.4);font-family:'Source Sans 3',sans-serif;font-size:0.75rem;">(${list.length})</span></div>
+        <div class="birds-grid">${cardsHTML}</div>
+      </div>`;
+  }
+
+  resultsEl.innerHTML = `
+    <div class="compare-columns">
+      ${buildColumn(birdsA, lowerB, scoresB, nameA)}
+      ${buildColumn(birdsB, lowerA, scoresA, nameB)}
+    </div>`;
+}
+
 
 document.addEventListener('click', e => {
   const nav = document.getElementById('nav-links-list');
