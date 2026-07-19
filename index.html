@@ -1248,8 +1248,11 @@ window.adminSaveBird = async function(key) {
   if (!species) { fb.textContent = 'Species can\'t be empty.'; fb.style.color = '#e07060'; return; }
 
   try {
+    const oldScore = b.detection === 'seen' ? 2 : 1;
+    const newScore = detection === 'seen' ? 2 : 1;
     await updateDoc(doc(db, 'users', b.userKey, 'birds', b.birdId), {
-      species, location, note, date, detection, score: detection === 'seen' ? 2 : 1
+      species, location, note, date, detection, score: newScore,
+      ...(newScore !== oldScore ? { updatedAt: serverTimestamp() } : {})
     });
     renderAdmin();
   } catch(e) {
@@ -1334,7 +1337,7 @@ async function renderAdmin() {
       }
     });
     const bCount = [...new Set(bSnap.docs.map(b => b.data().species.toLowerCase()))].length;
-    return { id: d.id, display: u.display, password: u.password, bCount };
+    return { id: d.id, display: u.display, password: u.password, realName: u.realName || '', bCount };
   }));
 
   unlistedKeys.sort((a, b) => adminBirdsById[a].species.localeCompare(adminBirdsById[b].species));
@@ -1357,12 +1360,28 @@ async function renderAdmin() {
         </div>
       </div>
       <div class="admin-actions">
+        <input class="admin-pw-input" id="rn-${u.id}" type="text" placeholder="Real name…" value="${esc(u.realName)}">
+        <button class="btn-admin-save" onclick="adminSetRealName('${u.id}')">Save real name</button>
+      </div>
+      <div class="admin-actions" style="margin-top:0.5rem;">
         <input class="admin-pw-input" id="pw-${u.id}" type="text" placeholder="New password…">
         <button class="btn-admin-save" onclick="adminResetPw('${u.id}')">Reset password</button>
         <button class="btn-admin-delete" onclick="adminDeleteUser('${u.id}', '${esc(u.display)}')">Delete account</button>
       </div>
       <div class="admin-feedback" id="afb-${u.id}"></div>
     </div>`).join('');
+}
+
+window.adminSetRealName = async function(userKey) {
+  const input = document.getElementById('rn-' + userKey);
+  const fb = document.getElementById('afb-' + userKey);
+  const realName = input.value.trim();
+  try {
+    await updateDoc(doc(db, 'users', userKey), { realName });
+    fb.style.color = '#7ec87e';
+    fb.textContent = realName ? 'Real name updated.' : 'Real name cleared.';
+    setTimeout(() => { fb.textContent = ''; }, 3000);
+  } catch(e) { fb.style.color = '#e07060'; fb.textContent = 'Update failed.'; console.error(e); }
 }
 
 window.adminResetPw = async function(userKey) {
@@ -1882,9 +1901,12 @@ async function updateBirdEntry() {
 
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
+    const oldBird = cachedBirds.find(b => b.id === editingBirdId);
+    const oldScore = oldBird ? (oldBird.score || 1) : null;
     await updateDoc(doc(db, 'users', currentUser, 'birds', editingBirdId), {
       species, location, note, score, detection, date: dateVal,
-      ...(lat !== null ? { lat, lng } : {})
+      ...(lat !== null ? { lat, lng } : {}),
+      ...(oldScore !== null && score !== oldScore ? { updatedAt: serverTimestamp() } : {})
     });
     const idx = cachedBirds.findIndex(b => b.id === editingBirdId);
     if (idx >= 0) {
@@ -1954,7 +1976,7 @@ window.addBird = async function() {
     try {
       await updateDoc(doc(db, 'users', currentUser, 'birds', existing.id), {
         score, detection, location: location || existing.location,
-        note: note || existing.note, date: dateVal
+        note: note || existing.note, date: dateVal, updatedAt: serverTimestamp()
       });
       cachedBirds[existingIdx] = { ...existing, score, detection, location: location || existing.location, note: note || existing.note, date: dateVal };
       document.getElementById('bird-species').value = '';
@@ -2118,7 +2140,7 @@ async function logShareIntoBirds(s, myBirdsMap) {
       await updateDoc(doc(db, 'users', currentUser, 'birds', existing.id), {
         score: newScore, detection: s.detection,
         location: s.location || existing.location, note: s.note || existing.note,
-        date: s.date || existing.date
+        date: s.date || existing.date, updatedAt: serverTimestamp()
       });
       myBirdsMap[key] = { ...existing, score: newScore, detection: s.detection,
         location: s.location || existing.location, note: s.note || existing.note, date: s.date || existing.date };
@@ -2202,15 +2224,20 @@ async function renderActivity() {
         note: b.note,
         detection: b.detection || (b.score === 2 ? 'seen' : 'heard'),
         addedAt: b.addedAt,
+        updatedAt: b.updatedAt,
         date: b.date
       });
     });
   }
 
-  // Newest first — fall back to the logged date string if addedAt is missing
+  // Sort by whichever is more recent — original log time, or a later score change.
+  function ts(it) {
+    const added = it.addedAt?.toMillis ? it.addedAt.toMillis() : 0;
+    const updated = it.updatedAt?.toMillis ? it.updatedAt.toMillis() : 0;
+    return Math.max(added, updated);
+  }
   items.sort((a, b) => {
-    const ta = a.addedAt?.toMillis ? a.addedAt.toMillis() : 0;
-    const tb = b.addedAt?.toMillis ? b.addedAt.toMillis() : 0;
+    const ta = ts(a), tb = ts(b);
     if (ta !== tb) return tb - ta;
     return (b.date || '').localeCompare(a.date || '');
   });
@@ -2223,12 +2250,14 @@ async function renderActivity() {
   listEl.innerHTML = items.map(it => {
     const scoreLabel = it.detection === 'seen' ? '👁 Seen · 2pts' : '👂 Heard · 1pt';
     const scoreCls = it.detection === 'seen' ? 'seen' : 'heard';
+    const wasUpdated = it.updatedAt?.toMillis && (!it.addedAt?.toMillis || it.updatedAt.toMillis() > it.addedAt.toMillis());
+    const displayTs = wasUpdated ? it.updatedAt : it.addedAt;
     return `
       <div class="message-card">
         <div class="msg-header">
           <div class="msg-avatar" style="cursor:pointer;" onclick="window.viewProfile('${it.key}')">${initials(it.display)}</div>
           <span class="msg-author" style="cursor:pointer;" onclick="window.viewProfile('${it.key}')">${esc(it.display)}${it.realName ? ` <span style="font-weight:400;color:rgba(245,237,214,0.4);">• ${esc(it.realName)}</span>` : ''}</span>
-          <span class="msg-time">${formatTime(it.addedAt)}</span>
+          <span class="msg-time">${wasUpdated ? 'updated ' : ''}${formatTime(displayTs)}</span>
         </div>
         <div class="msg-text">
           🐦 <strong style="cursor:pointer;" onclick="window.showBirdImage('${esc(it.species).replace(/'/g, "\\'")}')" title="Click for a photo">${esc(it.species)}</strong> <span class="bird-score ${scoreCls}">${scoreLabel}</span>
