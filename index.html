@@ -497,7 +497,14 @@
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
       <div class="section-label" style="margin-bottom:0;">Your list · <span id="birds-count">0</span> species</div>
     </div>
-    <input id="bird-search" class="search-input" type="text" placeholder="Filter species…" oninput="renderBirdCards()">
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;">
+      <input id="bird-search" class="search-input" type="text" placeholder="Filter species…" oninput="renderBirdCards()" style="flex:1;min-width:150px;margin-bottom:0;">
+      <select id="bird-sort" class="form-input" style="max-width:170px;" onchange="renderBirdCards()">
+        <option value="time">Sort: Most recent</option>
+        <option value="name">Sort: Name (A–Z)</option>
+        <option value="location">Sort: Location (A–Z)</option>
+      </select>
+    </div>
     <div class="birds-grid" id="birds-grid"><div class="empty-state">Loading…</div></div>
   </div>
   <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
@@ -1621,10 +1628,26 @@ async function renderBirdsPage(userKey, isOwn) {
 
 window.renderBirdCards = function() {
   const search = document.getElementById('bird-search').value.toLowerCase();
-  const filtered = search ? cachedBirds.filter(b =>
+  const sortMode = document.getElementById('bird-sort')?.value || 'time';
+  let filtered = search ? cachedBirds.filter(b =>
     b.species.toLowerCase().includes(search) ||
     (b.location||'').toLowerCase().includes(search)
-  ) : cachedBirds;
+  ) : cachedBirds.slice();
+
+  filtered = filtered.slice();
+  if (sortMode === 'name') {
+    filtered.sort((a, b) => a.species.localeCompare(b.species));
+  } else if (sortMode === 'location') {
+    filtered.sort((a, b) => (a.location || '').localeCompare(b.location || ''));
+  } else {
+    // Most recent — same "newest update wins" logic used on the Activity tab.
+    const ts = b => {
+      const added = b.addedAt?.toMillis ? b.addedAt.toMillis() : 0;
+      const updated = b.updatedAt?.toMillis ? b.updatedAt.toMillis() : 0;
+      return Math.max(added, updated);
+    };
+    filtered.sort((a, b) => ts(b) - ts(a));
+  }
 
   // Dedup by species for count/points (keep highest score per species)
   const best = {};
