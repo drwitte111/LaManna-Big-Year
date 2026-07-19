@@ -2460,7 +2460,7 @@ window.renderCompareResults = async function() {
   const nameB = esc(allUsersCache[keyB]?.display || keyB);
   const filter = compareState.filter;
 
-  function buildColumn(birds, otherLowerSet, otherScoreMap, name) {
+  function buildColumn(birds, otherLowerSet, otherScoreMap, name, otherName) {
     let list = birds.slice().sort((a, b) => a.species.localeCompare(b.species));
     const key = b => b.species.toLowerCase();
     if (filter === 'shared') list = list.filter(b => otherLowerSet.has(key(b)));
@@ -2483,7 +2483,7 @@ window.renderCompareResults = async function() {
       return `
         <div class="bird-card${shared ? ' bird-card-matched' : ''}" style="cursor:pointer;" onclick="window.showBirdImage('${esc(b.species).replace(/'/g, "\\'")}')" title="Click for a photo">
           <div class="bird-name">🐦 ${esc(b.species)} <span class="bird-score ${scoreCls}">${scoreLabel}</span></div>
-          ${diffs ? `<div style="font-size:0.72rem;color:var(--rust);margin-top:0.15rem;">${name.split(' ')[0]} has: ${otherLabel}</div>` : ''}
+          ${diffs ? `<div style="font-size:0.72rem;color:var(--rust);margin-top:0.15rem;">${otherName.split(' ')[0]} has: ${otherLabel}</div>` : ''}
           ${b.location ? `<div class="bird-location">📍 ${esc(b.location)}</div>` : ''}
           <div class="bird-date">${b.date || ''}</div>
         </div>`;
@@ -2503,8 +2503,8 @@ window.renderCompareResults = async function() {
 
   resultsEl.innerHTML = `
     <div class="compare-columns">
-      ${buildColumn(birdsA, lowerB, scoresB, nameA)}
-      ${buildColumn(birdsB, lowerA, scoresA, nameB)}
+      ${buildColumn(birdsA, lowerB, scoresB, nameA, nameB)}
+      ${buildColumn(birdsB, lowerA, scoresA, nameB, nameA)}
     </div>`;
 }
 
