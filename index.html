@@ -2196,6 +2196,7 @@ async function renderActivity() {
       items.push({
         key,
         display: u.display || key,
+        realName: u.realName || '',
         species: b.species,
         location: b.location,
         note: b.note,
@@ -2226,7 +2227,7 @@ async function renderActivity() {
       <div class="message-card">
         <div class="msg-header">
           <div class="msg-avatar" style="cursor:pointer;" onclick="window.viewProfile('${it.key}')">${initials(it.display)}</div>
-          <span class="msg-author" style="cursor:pointer;" onclick="window.viewProfile('${it.key}')">${esc(it.display)}</span>
+          <span class="msg-author" style="cursor:pointer;" onclick="window.viewProfile('${it.key}')">${esc(it.display)}${it.realName ? ` <span style="font-weight:400;color:rgba(245,237,214,0.4);">• ${esc(it.realName)}</span>` : ''}</span>
           <span class="msg-time">${formatTime(it.addedAt)}</span>
         </div>
         <div class="msg-text">
