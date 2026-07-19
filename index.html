@@ -2345,7 +2345,7 @@ async function renderProfiles() {
     </div>`).join('');
 }
 
-let profileViewState = null; // { birds, myLowerSpecies, isMe, showMissingOnly }
+let profileViewState = null; // { birds, myLowerSpecies, isMe, showMissingOnly, detFilter, sortMode }
 
 window.viewProfile = async function(userKey) {
   await loadAllUsers();
@@ -2373,7 +2373,7 @@ window.viewProfile = async function(userKey) {
     mySnap.docs.forEach(d => myLowerSpecies.add(d.data().species.toLowerCase()));
   }
 
-  profileViewState = { birds, myLowerSpecies, isMe, showMissingOnly: false };
+  profileViewState = { birds, myLowerSpecies, isMe, showMissingOnly: false, detFilter: 'all', sortMode: 'time' };
 
   document.getElementById('profile-view-content').innerHTML = `
     <button class="back-btn" onclick="showPage('profiles')">← Back to family</button>
@@ -2391,10 +2391,22 @@ window.viewProfile = async function(userKey) {
     </div>
     ${isMe ? '<div style="text-align:right;margin-bottom:0.75rem;"><button class="btn-add-bird" onclick="showPage(\'birds\')">+ Add a bird</button></div>' : ''}
     ${!isMe ? `
-    <div class="detection-toggle" style="max-width:340px;margin-bottom:1rem;">
+    <div class="detection-toggle" style="max-width:340px;margin-bottom:0.75rem;">
       <button type="button" class="detection-btn active" id="pv-toggle-all" onclick="window.setProfileFilter(false)">All birds</button>
       <button type="button" class="detection-btn" id="pv-toggle-missing" onclick="window.setProfileFilter(true)">Not found yet</button>
     </div>` : ''}
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;">
+      <div class="detection-toggle" style="max-width:280px;margin-bottom:0;flex:1;">
+        <button type="button" class="detection-btn active" id="pv-det-all" onclick="window.setProfileDetFilter('all')">All</button>
+        <button type="button" class="detection-btn" id="pv-det-seen" onclick="window.setProfileDetFilter('seen')">👁 Seen</button>
+        <button type="button" class="detection-btn" id="pv-det-heard" onclick="window.setProfileDetFilter('heard')">👂 Heard</button>
+      </div>
+      <select id="pv-sort" class="form-input" style="max-width:170px;" onchange="window.setProfileSort(this.value)">
+        <option value="time">Sort: Most recent</option>
+        <option value="name">Sort: Name (A–Z)</option>
+        <option value="location">Sort: Location (A–Z)</option>
+      </select>
+    </div>
     <div class="section-label">Species list</div>
     <div class="birds-grid" id="profile-birds-grid"></div>
   `;
@@ -2413,19 +2425,54 @@ window.setProfileFilter = function(missingOnly) {
   renderProfileBirds();
 }
 
+window.setProfileDetFilter = function(filter) {
+  if (!profileViewState) return;
+  profileViewState.detFilter = filter;
+  document.getElementById('pv-det-all').classList.toggle('active', filter === 'all');
+  document.getElementById('pv-det-seen').classList.toggle('active', filter === 'seen');
+  document.getElementById('pv-det-heard').classList.toggle('active', filter === 'heard');
+  renderProfileBirds();
+}
+
+window.setProfileSort = function(mode) {
+  if (!profileViewState) return;
+  profileViewState.sortMode = mode;
+  renderProfileBirds();
+}
+
 function renderProfileBirds() {
   if (!profileViewState) return;
-  const { birds, myLowerSpecies, isMe, showMissingOnly } = profileViewState;
+  const { birds, myLowerSpecies, isMe, showMissingOnly, detFilter, sortMode } = profileViewState;
   const grid = document.getElementById('profile-birds-grid');
   if (!grid) return;
 
-  const filtered = (isMe || !showMissingOnly)
-    ? birds
+  let filtered = (isMe || !showMissingOnly)
+    ? birds.slice()
     : birds.filter(b => !myLowerSpecies.has(b.species.toLowerCase()));
+
+  if (detFilter !== 'all') {
+    filtered = filtered.filter(b => {
+      const det = b.detection || (b.score === 2 ? 'seen' : 'heard');
+      return det === detFilter;
+    });
+  }
+
+  if (sortMode === 'name') {
+    filtered.sort((a, b) => a.species.localeCompare(b.species));
+  } else if (sortMode === 'location') {
+    filtered.sort((a, b) => (a.location || '').localeCompare(b.location || ''));
+  } else {
+    const ts = b => {
+      const added = b.addedAt?.toMillis ? b.addedAt.toMillis() : 0;
+      const updated = b.updatedAt?.toMillis ? b.updatedAt.toMillis() : 0;
+      return Math.max(added, updated);
+    };
+    filtered.sort((a, b) => ts(b) - ts(a));
+  }
 
   if (!filtered.length) {
     grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">' +
-      (showMissingOnly ? "You've found every species on this list!" : 'No birds logged yet.') + '</div>';
+      (showMissingOnly ? "You've found every species on this list!" : 'No birds match this filter.') + '</div>';
     return;
   }
 
