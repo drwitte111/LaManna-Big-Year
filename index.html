@@ -391,7 +391,7 @@
     <div class="login-card">
       <div class="login-hero">🦅</div>
       <div class="login-title">LaManna Big Year</div>
-      <div class="login-subtitle">Family Bird Log · 2025</div>
+      <div class="login-subtitle">Family Bird Log · 2026-2027</div>
       <div class="form-group">
         <label class="form-label">Your name</label>
         <input id="login-username" class="form-input" type="text" placeholder="e.g. Mom, David, Jake…" autocomplete="off">
@@ -455,7 +455,7 @@
   <div class="content">
     <div class="page-header">
       <div class="page-title" id="birds-title">My Birds</div>
-      <div class="page-subtitle" id="birds-subtitle">Your 2025 big year list</div>
+      <div class="page-subtitle" id="birds-subtitle">Your 2026-2027 big year list</div>
     </div>
     <div class="add-bird-form" id="add-bird-section">
       <div class="section-label">Log a bird</div>
@@ -1652,7 +1652,7 @@ async function renderBirdsPage(userKey, isOwn) {
 
   const display = allUsersCache[userKey]?.display || userKey;
   document.getElementById('birds-title').textContent = isOwn ? 'My Birds' : display + "'s Birds";
-  document.getElementById('birds-subtitle').textContent = isOwn ? 'Your 2025 big year list' : 'Their sightings this year';
+  document.getElementById('birds-subtitle').textContent = isOwn ? 'Your 2026-2027 big year list' : 'Their sightings this year';
   document.getElementById('add-bird-section').style.display = isOwn ? '' : 'none';
   document.getElementById('bird-search').value = '';
 
