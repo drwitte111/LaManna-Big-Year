@@ -1225,7 +1225,12 @@ function adminBirdEditHTML(key) {
     <div class="admin-user-card" style="padding:0.75rem 1rem;margin-bottom:0.5rem;" id="abrow-${key}">
       <div class="admin-user-key" style="margin-bottom:0.5rem;">${esc(b.display)}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.5rem;">
-        <input class="form-input" id="abe-species-${key}" value="${esc(b.species)}" placeholder="Species">
+        <div style="position:relative;">
+          <input class="form-input" id="abe-species-${key}" value="${esc(b.species)}" placeholder="Species"
+            oninput="filterSuggestions('abe-species-${key}','abe-species-suggestions-${key}')"
+            onkeydown="suggestionKeydown(event,'abe-species-${key}','abe-species-suggestions-${key}')" autocomplete="off">
+          <div id="abe-species-suggestions-${key}" class="suggestions-dropdown"></div>
+        </div>
         <input class="form-input" id="abe-location-${key}" value="${esc(b.location)}" placeholder="Location">
         <input class="form-input" type="date" id="abe-date-${key}" value="${esc(b.date)}">
         <input class="form-input" id="abe-note-${key}" value="${esc(b.note)}" placeholder="Note">
@@ -1836,28 +1841,33 @@ async function loadOhioBirds() {
 // ── AUTOCOMPLETE ───────────────────────────────────────────────────────────
 let suggestionIndex = -1;
 
-window.filterSuggestions = function() {
-  const val = document.getElementById('bird-species').value.trim().toLowerCase();
-  const box = document.getElementById('species-suggestions');
+window.filterSuggestions = function(inputId, boxId) {
+  inputId = inputId || 'bird-species';
+  boxId = boxId || 'species-suggestions';
+  const val = document.getElementById(inputId).value.trim().toLowerCase();
+  const box = document.getElementById(boxId);
   suggestionIndex = -1;
   if (!val || val.length < 2) { box.classList.remove('open'); box.innerHTML = ''; return; }
   const matches = OHIO_BIRDS.filter(b => b.toLowerCase().includes(val)).slice(0, 10);
   if (!matches.length) { box.classList.remove('open'); box.innerHTML = ''; return; }
   box.innerHTML = matches.map((b, i) =>
-    `<div class="suggestion-item" data-val="${esc(b)}" onmousedown="selectSuggestion('${esc(b)}')">${esc(b)}</div>`
+    `<div class="suggestion-item" data-val="${esc(b)}" onmousedown="selectSuggestion('${esc(b).replace(/'/g, "\\'")}','${inputId}','${boxId}')">${esc(b)}</div>`
   ).join('');
   box.classList.add('open');
 }
 
-window.selectSuggestion = function(val) {
-  document.getElementById('bird-species').value = val;
-  document.getElementById('species-suggestions').classList.remove('open');
-  document.getElementById('species-suggestions').innerHTML = '';
+window.selectSuggestion = function(val, inputId, boxId) {
+  inputId = inputId || 'bird-species';
+  boxId = boxId || 'species-suggestions';
+  document.getElementById(inputId).value = val;
+  document.getElementById(boxId).classList.remove('open');
+  document.getElementById(boxId).innerHTML = '';
   suggestionIndex = -1;
 }
 
-window.suggestionKeydown = function(e) {
-  const box = document.getElementById('species-suggestions');
+window.suggestionKeydown = function(e, inputId, boxId) {
+  boxId = boxId || 'species-suggestions';
+  const box = document.getElementById(boxId);
   const items = box.querySelectorAll('.suggestion-item');
   if (!items.length) return;
   if (e.key === 'ArrowDown') {
@@ -1870,17 +1880,17 @@ window.suggestionKeydown = function(e) {
     items.forEach((el, i) => el.classList.toggle('active', i === suggestionIndex));
   } else if (e.key === 'Enter' && suggestionIndex >= 0) {
     e.preventDefault();
-    selectSuggestion(items[suggestionIndex].dataset.val);
+    selectSuggestion(items[suggestionIndex].dataset.val, inputId, boxId);
   } else if (e.key === 'Escape') {
     box.classList.remove('open');
   }
 }
 
 document.addEventListener('click', e => {
-  if (!e.target.closest('#bird-species') && !e.target.closest('#species-suggestions')) {
-    const box = document.getElementById('species-suggestions');
-    if (box) box.classList.remove('open');
-  }
+  // Closes any open species-suggestion dropdown (My Birds form or any admin
+  // edit row) when the click lands outside both the input and its dropdown.
+  if (e.target.closest('.suggestions-dropdown') || e.target.closest('[id^="abe-species-"]') || e.target.closest('#bird-species')) return;
+  document.querySelectorAll('.suggestions-dropdown.open').forEach(box => box.classList.remove('open'));
 });
 
 // ── DETECTION TOGGLE ───────────────────────────────────────────────────────
