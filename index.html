@@ -742,7 +742,14 @@
     <hr class="section-rule">
     <div class="section-label">All bird entries</div>
     <p class="settings-hint">Every sighting logged by anyone. Search, edit, or delete an individual entry.</p>
-    <input id="admin-birds-search" class="search-input" type="text" placeholder="Search by species or person…" oninput="renderAdminAllBirds()">
+    <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;flex-wrap:wrap;">
+      <input id="admin-birds-search" class="search-input" type="text" placeholder="Search by species or person…" oninput="renderAdminAllBirds()" style="flex:1;min-width:150px;margin-bottom:0;">
+      <select id="admin-birds-sort" class="form-input" style="max-width:170px;" onchange="renderAdminAllBirds()">
+        <option value="name">Sort: Name (A–Z)</option>
+        <option value="date">Sort: Date (newest)</option>
+        <option value="location">Sort: Location (A–Z)</option>
+      </select>
+    </div>
     <div id="admin-allbirds-list" style="margin-bottom:1.5rem;"></div>
 
     <hr class="section-rule">
@@ -1334,6 +1341,7 @@ window.adminDeleteBird = async function(key) {
 window.renderAdminAllBirds = function() {
   const searchEl = document.getElementById('admin-birds-search');
   const search = (searchEl?.value || '').trim().toLowerCase();
+  const sortMode = document.getElementById('admin-birds-sort')?.value || 'name';
   const listEl = document.getElementById('admin-allbirds-list');
   if (!listEl) return;
 
@@ -1344,7 +1352,13 @@ window.renderAdminAllBirds = function() {
       return b.species.toLowerCase().includes(search) || b.display.toLowerCase().includes(search);
     });
   }
-  keys.sort((a, b) => adminBirdsById[a].species.localeCompare(adminBirdsById[b].species));
+  if (sortMode === 'date') {
+    keys.sort((a, b) => (adminBirdsById[b].date || '').localeCompare(adminBirdsById[a].date || ''));
+  } else if (sortMode === 'location') {
+    keys.sort((a, b) => (adminBirdsById[a].location || '').localeCompare(adminBirdsById[b].location || ''));
+  } else {
+    keys.sort((a, b) => adminBirdsById[a].species.localeCompare(adminBirdsById[b].species));
+  }
 
   listEl.innerHTML = keys.length
     ? keys.map(k => adminBirdRowHTML(k)).join('')
