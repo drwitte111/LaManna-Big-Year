@@ -773,6 +773,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// Expose Firebase primitives so non-module window functions (e.g. adminRegeocodeAll) can use them
+window._db         = db;
+window._getDocs    = getDocs;
+window._doc        = doc;
+window._updateDoc  = updateDoc;
+window._collection = collection;
+
 const FAMILY_PW = 'lamanna';
 const ADMIN_USER = 'admin';
 const ADMIN_PW = 'lamannabigyear';
@@ -2918,8 +2925,11 @@ window.adminRegeocodeAll = async function() {
   const btn = document.getElementById('regeocode-btn');
   const fb  = document.getElementById('afb-regeocode');
   if (!CITY_DATA.length) { fb.textContent = 'City data not loaded yet — try again in a moment.'; fb.style.color = '#e07060'; return; }
+  if (!window._db) { fb.textContent = 'Firebase not ready — try again in a moment.'; fb.style.color = '#e07060'; return; }
   btn.disabled = true;
   fb.textContent = 'Scanning…'; fb.style.color = 'rgba(245,237,214,0.5)';
+
+  const { _db: db, _getDocs: getDocs, _doc: doc, _updateDoc: updateDoc, _collection: collection } = window;
 
   const allUsers = await getDocs(collection(db, 'users'));
   let updated = 0, skipped = 0, failed = 0;
@@ -2931,7 +2941,6 @@ window.adminRegeocodeAll = async function() {
       if (!b.location) { skipped++; continue; }
       const match = lookupCityLatLng(b.location);
       if (!match) { skipped++; continue; }
-      // Only write if lat/lng are missing or differ from lookup
       const same = b.lat === match.lat && b.lng === match.lng;
       if (same) { skipped++; continue; }
       try {
