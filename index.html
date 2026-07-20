@@ -724,6 +724,17 @@
     </div>
 
     <hr class="section-rule">
+    <div class="section-label">Location fix</div>
+    <div class="admin-user-card" style="margin-bottom:1.5rem;">
+      <div style="font-size:0.9rem;font-weight:600;margin-bottom:0.2rem;">Re-geocode all bird locations</div>
+      <div class="settings-hint" style="margin:0 0 0.75rem;">Loops through every bird entry that has a location but missing or mismatched coordinates and updates lat/lng from the city database. Only updates entries where coordinates are null or the city lookup returns a different result.</div>
+      <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+        <button class="btn-admin-save" id="regeocode-btn" onclick="adminRegeocodeAll()">🌐 Re-geocode all</button>
+        <div class="admin-feedback" id="afb-regeocode" style="margin:0;"></div>
+      </div>
+    </div>
+
+    <hr class="section-rule">
     <div class="section-label">Unlisted species</div>
     <p class="settings-hint">Birds someone logged that aren't on the current Ohio species list (<code style="color:var(--pale-gold)">ohio_birds.txt</code> on GitHub). Use "Edit" to fix a typo/rename right here, or treat this as a guide and update the GitHub file directly.</p>
     <div id="admin-unlisted-list" style="margin-bottom:1.5rem;"></div>
@@ -1231,7 +1242,11 @@ function adminBirdEditHTML(key) {
             onkeydown="suggestionKeydown(event,'abe-species-${key}','abe-species-suggestions-${key}')" autocomplete="off">
           <div id="abe-species-suggestions-${key}" class="suggestions-dropdown"></div>
         </div>
-        <input class="form-input" id="abe-location-${key}" value="${esc(b.location)}" placeholder="Location">
+        <div style="position:relative;">
+          <input class="form-input" id="abe-location-${key}" value="${esc(b.location)}" placeholder="Location"
+            oninput="adminFilterCity('${key}')" onkeydown="adminCityKeydown(event,'${key}')" autocomplete="off">
+          <div id="abe-city-suggestions-${key}" class="suggestions-dropdown"></div>
+        </div>
         <input class="form-input" type="date" id="abe-date-${key}" value="${esc(b.date)}">
         <input class="form-input" id="abe-note-${key}" value="${esc(b.note)}" placeholder="Note">
       </div>
@@ -1273,11 +1288,24 @@ window.adminSaveBird = async function(key) {
   const detection = b._pendingDetection || b.detection;
   if (!species) { fb.textContent = 'Species can\'t be empty.'; fb.style.color = '#e07060'; return; }
 
+  // Resolve lat/lng: use pending city selection if set, else look up from location text
+  let lat = (b._pendingLat !== undefined) ? b._pendingLat : b.lat ?? null;
+  let lng = (b._pendingLng !== undefined) ? b._pendingLng : b.lng ?? null;
+  // If location text changed from what's stored, re-lookup from CITY_DATA
+  if (location !== (b.location || '')) {
+    const match = lookupCityLatLng(location);
+    if (match) { lat = match.lat; lng = match.lng; }
+    else { lat = null; lng = null; }
+  }
+  // If a city was explicitly selected from dropdown, those take priority
+  if (b._pendingLat !== undefined) { lat = b._pendingLat; lng = b._pendingLng; }
+
   try {
     const oldScore = b.detection === 'seen' ? 2 : 1;
     const newScore = detection === 'seen' ? 2 : 1;
     await updateDoc(doc(db, 'users', b.userKey, 'birds', b.birdId), {
       species, location, note, date, detection, score: newScore,
+      lat: lat ?? null, lng: lng ?? null,
       ...(newScore !== oldScore ? { updatedAt: serverTimestamp() } : {})
     });
     renderAdmin();
@@ -2805,7 +2833,119 @@ document.addEventListener('click', e => {
     const box = document.getElementById('city-suggestions');
     if (box) box.classList.remove('open');
   }
+  // Close any open admin city suggestion dropdowns
+  if (!e.target.closest('[id^="abe-location-"]') && !e.target.closest('[id^="abe-city-suggestions-"]')) {
+    document.querySelectorAll('[id^="abe-city-suggestions-"]').forEach(el => { el.classList.remove('open'); el.innerHTML = ''; });
+  }
 });
+
+// ── ADMIN CITY LOOKUP HELPERS ────────────────────────────────────────────────
+
+// Returns { lat, lng } for a "City, ST" string, or null if not found
+function lookupCityLatLng(locationText) {
+  if (!locationText || !CITY_DATA.length) return null;
+  const parts = locationText.split(',');
+  if (parts.length < 2) return null;
+  const city  = parts[0].trim().toLowerCase();
+  const state = parts[1].trim().toLowerCase();
+  const match = CITY_DATA.find(([c, s]) =>
+    c.toLowerCase() === city && s.toLowerCase() === state
+  );
+  if (!match) return null;
+  return { lat: match[2], lng: match[3] };
+}
+
+let adminCityIndexes = {};
+
+window.adminFilterCity = function(key) {
+  const input = document.getElementById('abe-location-' + key);
+  const box   = document.getElementById('abe-city-suggestions-' + key);
+  if (!input || !box) return;
+  const val = input.value.trim();
+  // Clear pending selection when user types
+  const b = adminBirdsById[key];
+  if (b) { delete b._pendingLat; delete b._pendingLng; }
+  adminCityIndexes[key] = -1;
+  if (val.length < 2) { box.classList.remove('open'); box.innerHTML = ''; return; }
+  const lower = val.toLowerCase();
+  const matches = [];
+  for (let i = 0; i < CITY_DATA.length && matches.length < 10; i++) {
+    const [city, state] = CITY_DATA[i];
+    if ((city + ', ' + state).toLowerCase().startsWith(lower) ||
+        city.toLowerCase().startsWith(lower)) {
+      matches.push(CITY_DATA[i]);
+    }
+  }
+  if (!matches.length) { box.classList.remove('open'); box.innerHTML = ''; return; }
+  box.innerHTML = matches.map(([city, state, lat, lng]) =>
+    `<div class="suggestion-item" onmousedown="adminSelectCity('${key}','${city.replace(/'/g,"\\'")}','${state}',${lat},${lng})">${city}, ${state}</div>`
+  ).join('');
+  box.classList.add('open');
+}
+
+window.adminSelectCity = function(key, city, state, lat, lng) {
+  const input = document.getElementById('abe-location-' + key);
+  const box   = document.getElementById('abe-city-suggestions-' + key);
+  if (input) input.value = `${city}, ${state}`;
+  if (box)   { box.classList.remove('open'); box.innerHTML = ''; }
+  const b = adminBirdsById[key];
+  if (b) { b._pendingLat = lat; b._pendingLng = lng; }
+  adminCityIndexes[key] = -1;
+}
+
+window.adminCityKeydown = function(e, key) {
+  const box   = document.getElementById('abe-city-suggestions-' + key);
+  const items = box ? box.querySelectorAll('.suggestion-item') : [];
+  if (!items.length) return;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    adminCityIndexes[key] = Math.min((adminCityIndexes[key] || -1) + 1, items.length - 1);
+    items.forEach((el, i) => el.classList.toggle('active', i === adminCityIndexes[key]));
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    adminCityIndexes[key] = Math.max((adminCityIndexes[key] || 0) - 1, -1);
+    items.forEach((el, i) => el.classList.toggle('active', i === adminCityIndexes[key]));
+  } else if (e.key === 'Enter' && (adminCityIndexes[key] || -1) >= 0) {
+    e.preventDefault();
+    items[adminCityIndexes[key]].dispatchEvent(new MouseEvent('mousedown'));
+  } else if (e.key === 'Escape') {
+    box.classList.remove('open');
+  }
+}
+
+// ── RE-GEOCODE ALL BIRDS ─────────────────────────────────────────────────────
+window.adminRegeocodeAll = async function() {
+  const btn = document.getElementById('regeocode-btn');
+  const fb  = document.getElementById('afb-regeocode');
+  if (!CITY_DATA.length) { fb.textContent = 'City data not loaded yet — try again in a moment.'; fb.style.color = '#e07060'; return; }
+  btn.disabled = true;
+  fb.textContent = 'Scanning…'; fb.style.color = 'rgba(245,237,214,0.5)';
+
+  const allUsers = await getDocs(collection(db, 'users'));
+  let updated = 0, skipped = 0, failed = 0;
+
+  for (const userDoc of allUsers.docs) {
+    const birdsSnap = await getDocs(collection(db, 'users', userDoc.id, 'birds'));
+    for (const birdDoc of birdsSnap.docs) {
+      const b = birdDoc.data();
+      if (!b.location) { skipped++; continue; }
+      const match = lookupCityLatLng(b.location);
+      if (!match) { skipped++; continue; }
+      // Only write if lat/lng are missing or differ from lookup
+      const same = b.lat === match.lat && b.lng === match.lng;
+      if (same) { skipped++; continue; }
+      try {
+        await updateDoc(doc(db, 'users', userDoc.id, 'birds', birdDoc.id), { lat: match.lat, lng: match.lng });
+        updated++;
+      } catch(e) { failed++; console.error('Re-geocode failed:', userDoc.id, birdDoc.id, e); }
+      fb.textContent = `Updated ${updated}…`; fb.style.color = 'rgba(245,237,214,0.5)';
+    }
+  }
+
+  btn.disabled = false;
+  fb.textContent = `Done — ${updated} updated, ${skipped} skipped, ${failed} failed.`;
+  fb.style.color = failed ? '#e07060' : '#7EB87E';
+}
 </script>
 </body>
 </html>
