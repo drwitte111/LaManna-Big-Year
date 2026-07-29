@@ -2449,9 +2449,7 @@ async function renderProfiles() {
       <div class="profile-count">${u.points}</div>
       <div class="profile-count-label">points · ${u.speciesCount} species</div>
       <div style="font-size:0.68rem;color:rgba(245,237,214,0.3);margin-top:0.35rem;font-style:italic;">${daysAgo(u.lastDate)}</div>
-      <div style="font-size:0.68rem;color:rgba(245,237,214,0.3);margin-top:0.35rem;font-style:italic;">
-        ${u.lastDate ? 'Last bird: ' + u.lastDate : 'No birds logged yet'}
-      </div>
+
     </div>`).join('');
 }
 
