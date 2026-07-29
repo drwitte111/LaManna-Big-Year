@@ -2412,7 +2412,9 @@ async function renderProfiles() {
     });
     const speciesCount = Object.keys(best).length;
     const points = Object.values(best).reduce((a, b) => a + b, 0);
-    ranked.push({ key, display: u.display, speciesCount, points });
+    // Find the most recent sighting date (YYYY-MM-DD strings sort lexicographically)
+    const lastDate = birds.reduce((max, b) => b.date && b.date > max ? b.date : max, '');
+    ranked.push({ key, display: u.display, speciesCount, points, lastDate });
   }
   ranked.sort((a, b) => b.points - a.points);
 
@@ -2438,6 +2440,9 @@ async function renderProfiles() {
       <div class="profile-name">${esc(u.display)}</div>
       <div class="profile-count">${u.points}</div>
       <div class="profile-count-label">points · ${u.speciesCount} species</div>
+      <div style="font-size:0.68rem;color:rgba(245,237,214,0.3);margin-top:0.35rem;font-style:italic;">
+        ${u.lastDate ? 'Last bird: ' + u.lastDate : 'No birds logged yet'}
+      </div>
     </div>`).join('');
 }
 
