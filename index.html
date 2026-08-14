@@ -332,7 +332,12 @@
   .bird-card-f9  .bird-name { color: #eab887; }
   .bird-card-f10 .bird-name { color: #ffffff; }
 
-  .bird-finders { display: inline-block; font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: 2px; margin-left: 0.3rem; font-weight: 600; letter-spacing: 0.04em; background: rgba(245,237,214,0.08); border: 1px solid rgba(245,237,214,0.18); color: rgba(245,237,214,0.7); }
+  .bird-finders { display: inline-block; font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: 2px; margin-left: 0.3rem; font-weight: 600; letter-spacing: 0.04em; background: rgba(245,237,214,0.08); border: 1px solid rgba(245,237,214,0.18); color: rgba(245,237,214,0.7); font-family: 'Source Sans 3', sans-serif; cursor: pointer; transition: all 0.15s; }
+  .bird-finders:hover { background: rgba(200,149,42,0.2); border-color: var(--gold); color: var(--cream); }
+  .finder-row { display: flex; align-items: center; gap: 0.55rem; width: 100%; text-align: left; background: rgba(245,237,214,0.04); border: 1px solid rgba(200,149,42,0.18); border-radius: var(--radius); padding: 0.5rem 0.7rem; margin-bottom: 0.4rem; color: var(--cream); font-family: 'Source Sans 3', sans-serif; font-size: 0.88rem; cursor: pointer; transition: all 0.15s; }
+  .finder-row:hover { background: rgba(200,149,42,0.14); border-color: var(--gold); }
+  .finder-row .lb-avatar { flex: none; }
+  .finder-row-name { flex: 1; }
 
   /* Legend */
   .finder-legend { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.9rem; align-items: center; }
@@ -1711,10 +1716,14 @@ window.deleteMessage = async function(id) {
 }
 
 // ── BIRDS ──────────────────────────────────────────────────────────────────
-// How many distinct people (family-wide, viewer included) have logged each
-// species. Drives the color scale on the bird cards.
-let speciesFinderCounts = {};
+// Who (family-wide, viewer included) has logged each species:
+// species(lower) → [{ key, name, score }]. Drives the card color scale, the
+// legend filter, and the "who found this" modal.
+let speciesFinders = {};
 let speciesFinderCountsAt = 0;
+
+function finderList(species) { return speciesFinders[(species || '').toLowerCase()] || []; }
+function finderCount(species) { return finderList(species).length; }
 
 // Color scale: 1 person = red (rare) … 10+ = white (everybody's got it).
 const FINDER_SCALE = [
@@ -1735,18 +1744,23 @@ async function loadSpeciesFinderCounts(force) {
   if (!force && speciesFinderCountsAt && Date.now() - speciesFinderCountsAt < 60000) return;
   try {
     await loadAllUsers();
-    const counts = {};
-    for (const key of Object.keys(allUsersCache)) {
+    const finders = {};
+    for (const [key, u] of Object.entries(allUsersCache)) {
       if (key === '__admin__') continue;
       const snap = await getDocs(collection(db, 'users', key, 'birds'));
-      const mine = new Set();
+      const best = {}; // one entry per species, keeping this person's best score
       snap.docs.forEach(d => {
-        const sp = (d.data().species || '').toLowerCase();
-        if (sp) mine.add(sp);
+        const b = d.data();
+        const sp = (b.species || '').toLowerCase();
+        if (!sp) return;
+        const s = b.score || (b.detection === 'seen' ? 2 : 1);
+        if (!best[sp] || s > best[sp]) best[sp] = s;
       });
-      mine.forEach(sp => { counts[sp] = (counts[sp] || 0) + 1; });
+      Object.entries(best).forEach(([sp, score]) => {
+        (finders[sp] = finders[sp] || []).push({ key, name: u.display || key, score });
+      });
     }
-    speciesFinderCounts = counts;
+    speciesFinders = finders;
     speciesFinderCountsAt = Date.now();
   } catch(e) { console.error(e); }
 }
@@ -1756,7 +1770,7 @@ async function loadSpeciesFinderCounts(force) {
 function noteSpeciesRemoved(species) {
   const k = (species || '').toLowerCase();
   if (!k || cachedBirds.some(b => b.species.toLowerCase() === k)) return;
-  if (speciesFinderCounts[k]) speciesFinderCounts[k] = Math.max(0, speciesFinderCounts[k] - 1);
+  if (speciesFinders[k]) speciesFinders[k] = speciesFinders[k].filter(f => f.key !== currentUser);
 }
 
 function noteSpeciesAdded(species, selfId) {
@@ -1764,12 +1778,39 @@ function noteSpeciesAdded(species, selfId) {
   if (!k) return;
   // Already counted for this person if another of their entries has the species.
   if (cachedBirds.some(b => b.id !== selfId && b.species.toLowerCase() === k)) return;
-  speciesFinderCounts[k] = (speciesFinderCounts[k] || 0) + 1;
+  const mine = cachedBirds.filter(b => b.species.toLowerCase() === k);
+  const score = mine.reduce((max, b) => Math.max(max, b.score || 1), 1);
+  speciesFinders[k] = (speciesFinders[k] || []).filter(f => f.key !== currentUser);
+  speciesFinders[k].push({ key: currentUser, name: allUsersCache[currentUser]?.display || currentUser, score });
 }
 
 function finderTier(count) {
   if (!count || count < 1) return 0;
   return Math.min(count, 10);
+}
+
+// The 👥 badge on a card opens the roster behind that number.
+window.showFinders = function(species) {
+  const list = finderList(species).slice().sort((a, b) => {
+    if (a.key === currentUser) return -1;
+    if (b.key === currentUser) return 1;
+    return a.name.localeCompare(b.name);
+  });
+  const tier = finderTier(list.length);
+  const color = (FINDER_SCALE.find(s => s.n === tier) || {}).color || 'var(--gold)';
+  const rows = list.map(f => `
+    <button type="button" class="finder-row" onclick="closeModal(); window.viewProfile('${f.key}')" title="View their list">
+      <span class="lb-avatar">${initials(f.name)}</span>
+      <span class="finder-row-name">${esc(f.name)}${f.key === currentUser ? '<span class="lb-you">you</span>' : ''}</span>
+      <span class="bird-score ${f.score === 2 ? 'seen' : 'heard'}">${f.score === 2 ? '👁 Seen' : '👂 Heard'}</span>
+    </button>`).join('');
+
+  showModal(`
+    <div class="modal-title"><span class="fl-dot" style="background:${color};margin-right:0.4rem;"></span>${esc(species)}</div>
+    <div class="modal-body">Found by ${list.length} ${list.length === 1 ? 'person' : 'people'}:</div>
+    ${rows || '<div class="modal-body">No one has logged this yet.</div>'}
+    <div class="modal-actions"><button class="btn-logout" onclick="closeModal()">Close</button></div>
+  `);
 }
 
 // Legend doubles as a filter: click a color to show only birds at that tier.
@@ -1865,7 +1906,7 @@ window.renderBirdCards = function() {
   }
 
   // Finder counts drive the color legend, its per-tier tallies, and its filter.
-  const finders = b => speciesFinderCounts[b.species.toLowerCase()] || 0;
+  const finders = b => finderCount(b.species);
   const tierCounts = {};
   cachedBirds.forEach(b => {
     const t = finderTier(finders(b));
@@ -1918,11 +1959,12 @@ window.renderBirdCards = function() {
     const scoreCls = det === 'seen' ? 'seen' : 'heard';
     const editAttrs = !birdViewReadonly
       ? `onclick="window.startEditBird('${b.id}')" style="cursor:pointer;" title="Click to edit"` : '';
-    const finders = speciesFinderCounts[b.species.toLowerCase()] || 0;
+    const finders = finderCount(b.species);
     const tier = finderTier(finders);
     const tierCls = tier ? ` bird-card-f${tier}` : '';
+    const spArg = esc(b.species).replace(/'/g, "\\'");
     const finderBadge = finders
-      ? `<span class="bird-finders" title="${finders} ${finders === 1 ? 'person has' : 'people have'} found this">👥 ${finders}</span>` : '';
+      ? `<button type="button" class="bird-finders" onclick="event.stopPropagation(); window.showFinders('${spArg}')" title="Click to see who found this">👥 ${finders}</button>` : '';
     return `
       <div class="bird-card${tierCls}" ${editAttrs}>
         ${delBtn}
