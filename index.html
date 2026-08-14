@@ -310,6 +310,36 @@
   .bird-score.seen { background: rgba(74,103,65,0.3); color: #b8d4b0; border: 1px solid rgba(74,103,65,0.5); }
   .bird-score.heard { background: rgba(92,61,30,0.4); color: #d4b896; border: 1px solid rgba(92,61,30,0.6); }
 
+  /* FINDER-COUNT COLOR SCALE — how many people family-wide have logged this species */
+  .bird-card-f1  { background: rgba(214,74,58,0.16);   border-color: rgba(214,74,58,0.6); }
+  .bird-card-f2  { background: rgba(222,126,44,0.16);  border-color: rgba(222,126,44,0.6); }
+  .bird-card-f3  { background: rgba(214,178,60,0.16);  border-color: rgba(214,178,60,0.6); }
+  .bird-card-f4  { background: rgba(90,168,90,0.16);   border-color: rgba(90,168,90,0.6); }
+  .bird-card-f5  { background: rgba(74,134,216,0.16);  border-color: rgba(74,134,216,0.6); }
+  .bird-card-f6  { background: rgba(102,90,205,0.18);  border-color: rgba(102,90,205,0.65); }
+  .bird-card-f7  { background: rgba(166,90,208,0.16);  border-color: rgba(166,90,208,0.6); }
+  .bird-card-f8  { background: rgba(184,190,200,0.14); border-color: rgba(184,190,200,0.6); }
+  .bird-card-f9  { background: rgba(176,111,58,0.18);  border-color: rgba(176,111,58,0.7); }
+  .bird-card-f10 { background: rgba(245,245,240,0.16); border-color: rgba(245,245,240,0.7); }
+  .bird-card-f1  .bird-name { color: #f0a79c; }
+  .bird-card-f2  .bird-name { color: #f5c089; }
+  .bird-card-f3  .bird-name { color: #f0dd9a; }
+  .bird-card-f4  .bird-name { color: #a8dea8; }
+  .bird-card-f5  .bird-name { color: #a6c8f2; }
+  .bird-card-f6  .bird-name { color: #b8b0f0; }
+  .bird-card-f7  .bird-name { color: #dcaef0; }
+  .bird-card-f8  .bird-name { color: #e2e6ec; }
+  .bird-card-f9  .bird-name { color: #eab887; }
+  .bird-card-f10 .bird-name { color: #ffffff; }
+
+  .bird-finders { display: inline-block; font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: 2px; margin-left: 0.3rem; font-weight: 600; letter-spacing: 0.04em; background: rgba(245,237,214,0.08); border: 1px solid rgba(245,237,214,0.18); color: rgba(245,237,214,0.7); }
+
+  /* Legend */
+  .finder-legend { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.9rem; align-items: center; }
+  .finder-legend-label { font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(245,237,214,0.35); margin-right: 0.25rem; }
+  .fl-chip { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.68rem; color: rgba(245,237,214,0.55); border: 1px solid rgba(200,149,42,0.15); border-radius: 3px; padding: 0.15rem 0.4rem; }
+  .fl-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
   /* COUNTDOWN */
   .cd-phase-label { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(200,149,42,0.6); margin-bottom: 0.75rem; }
   .cd-title { font-family: 'Playfair Display', serif; font-size: 2rem; color: var(--gold); margin-bottom: 0.25rem; }
@@ -526,6 +556,7 @@
         <option value="location">Sort: Location (A–Z)</option>
       </select>
     </div>
+    <div class="finder-legend" id="finder-legend"></div>
     <div class="birds-grid" id="birds-grid"><div class="empty-state">Loading…</div></div>
   </div>
   <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
@@ -1673,6 +1704,77 @@ window.deleteMessage = async function(id) {
 }
 
 // ── BIRDS ──────────────────────────────────────────────────────────────────
+// How many distinct people (family-wide, viewer included) have logged each
+// species. Drives the color scale on the bird cards.
+let speciesFinderCounts = {};
+let speciesFinderCountsAt = 0;
+
+// Color scale: 1 person = red (rare) … 10+ = white (everybody's got it).
+const FINDER_SCALE = [
+  { n: 1,  color: '#d64a3a', label: 'Red' },
+  { n: 2,  color: '#de7e2c', label: 'Orange' },
+  { n: 3,  color: '#d6b23c', label: 'Gold' },
+  { n: 4,  color: '#5aa85a', label: 'Green' },
+  { n: 5,  color: '#4a86d8', label: 'Blue' },
+  { n: 6,  color: '#665acd', label: 'Indigo' },
+  { n: 7,  color: '#a65ad0', label: 'Violet' },
+  { n: 8,  color: '#b8bec8', label: 'Silver' },
+  { n: 9,  color: '#b06f3a', label: 'Bronze' },
+  { n: 10, color: '#f5f5f0', label: 'White' }
+];
+
+// Cached for a minute so the filter/sort re-renders don't refetch everyone.
+async function loadSpeciesFinderCounts(force) {
+  if (!force && speciesFinderCountsAt && Date.now() - speciesFinderCountsAt < 60000) return;
+  try {
+    await loadAllUsers();
+    const counts = {};
+    for (const key of Object.keys(allUsersCache)) {
+      if (key === '__admin__') continue;
+      const snap = await getDocs(collection(db, 'users', key, 'birds'));
+      const mine = new Set();
+      snap.docs.forEach(d => {
+        const sp = (d.data().species || '').toLowerCase();
+        if (sp) mine.add(sp);
+      });
+      mine.forEach(sp => { counts[sp] = (counts[sp] || 0) + 1; });
+    }
+    speciesFinderCounts = counts;
+    speciesFinderCountsAt = Date.now();
+  } catch(e) { console.error(e); }
+}
+
+// Keep the finder tally in step with local edits so colors don't go stale
+// between page loads (they're recomputed from Firestore on the next visit).
+function noteSpeciesRemoved(species) {
+  const k = (species || '').toLowerCase();
+  if (!k || cachedBirds.some(b => b.species.toLowerCase() === k)) return;
+  if (speciesFinderCounts[k]) speciesFinderCounts[k] = Math.max(0, speciesFinderCounts[k] - 1);
+}
+
+function noteSpeciesAdded(species, selfId) {
+  const k = (species || '').toLowerCase();
+  if (!k) return;
+  // Already counted for this person if another of their entries has the species.
+  if (cachedBirds.some(b => b.id !== selfId && b.species.toLowerCase() === k)) return;
+  speciesFinderCounts[k] = (speciesFinderCounts[k] || 0) + 1;
+}
+
+function finderTier(count) {
+  if (!count || count < 1) return 0;
+  return Math.min(count, 10);
+}
+
+function renderFinderLegend() {
+  const el = document.getElementById('finder-legend');
+  if (!el) return;
+  el.innerHTML = '<span class="finder-legend-label">Found by</span>' +
+    FINDER_SCALE.map(s => `
+      <span class="fl-chip" title="${s.label}">
+        <span class="fl-dot" style="background:${s.color};"></span>${s.n === 10 ? '10+' : s.n}
+      </span>`).join('');
+}
+
 async function renderBirdsPage(userKey, isOwn) {
   birdViewUser = userKey;
   birdViewReadonly = !isOwn;
@@ -1702,7 +1804,12 @@ async function renderBirdsPage(userKey, isOwn) {
     }
   }
 
-  const snap = await getDocs(collection(db, 'users', userKey, 'birds'));
+  renderFinderLegend();
+
+  const [snap] = await Promise.all([
+    getDocs(collection(db, 'users', userKey, 'birds')),
+    loadSpeciesFinderCounts(true)
+  ]);
   cachedBirds = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   cachedBirds.sort((a, b) => (b.addedAt || '') > (a.addedAt || '') ? 1 : -1);
   renderBirdCards();
@@ -1774,11 +1881,16 @@ window.renderBirdCards = function() {
     const scoreCls = det === 'seen' ? 'seen' : 'heard';
     const editAttrs = !birdViewReadonly
       ? `onclick="window.startEditBird('${b.id}')" style="cursor:pointer;" title="Click to edit"` : '';
+    const finders = speciesFinderCounts[b.species.toLowerCase()] || 0;
+    const tier = finderTier(finders);
+    const tierCls = tier ? ` bird-card-f${tier}` : '';
+    const finderBadge = finders
+      ? `<span class="bird-finders" title="${finders} ${finders === 1 ? 'person has' : 'people have'} found this">👥 ${finders}</span>` : '';
     return `
-      <div class="bird-card" ${editAttrs}>
+      <div class="bird-card${tierCls}" ${editAttrs}>
         ${delBtn}
         ${shareBtn}
-        <div class="bird-name">🐦 ${esc(b.species)} <span class="bird-score ${scoreCls}">${scoreLabel}</span></div>
+        <div class="bird-name">🐦 ${esc(b.species)} <span class="bird-score ${scoreCls}">${scoreLabel}</span>${finderBadge}</div>
         ${b.location ? `<div class="bird-location">📍 ${esc(b.location)}</div>` : ''}
         <div class="bird-date">${b.date || ''}</div>
         ${b.note ? `<div class="bird-note">${esc(b.note)}</div>` : ''}
@@ -2034,10 +2146,16 @@ async function updateBirdEntry() {
       ...(lat !== null ? { lat, lng } : {}),
       ...(oldScore !== null && score !== oldScore ? { updatedAt: serverTimestamp() } : {})
     });
+    const oldSpecies = oldBird ? oldBird.species : '';
+    const editedId = editingBirdId;
     const idx = cachedBirds.findIndex(b => b.id === editingBirdId);
     if (idx >= 0) {
       cachedBirds[idx] = { ...cachedBirds[idx], species, location, note, score, detection, lat, lng, date: dateVal,
         ...(oldScore !== null && score !== oldScore ? { updatedAt: localTimestamp() } : {}) };
+    }
+    if (oldSpecies.toLowerCase() !== species.toLowerCase()) {
+      noteSpeciesRemoved(oldSpecies);
+      noteSpeciesAdded(species, editedId);
     }
     cancelEditBird();
     renderBirdCards();
@@ -2128,6 +2246,7 @@ window.addBird = async function() {
       addedAt: serverTimestamp()
     });
     cachedBirds.unshift({ id: ref.id, species, location, note, score, detection, lat, lng, date: dateVal, addedAt: localTimestamp() });
+    noteSpeciesAdded(species, ref.id);
     document.getElementById('bird-species').value = '';
     document.getElementById('bird-location').value = '';
     document.getElementById('bird-note').value = '';
@@ -2144,7 +2263,8 @@ window.deleteBird = async function(id) {
   if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
   try {
     await deleteDoc(doc(db, 'users', currentUser, 'birds', id));
-    cachedBirds = cachedBirds.filter(b => b.id !== id);
+    cachedBirds = cachedBirds.filter(x => x.id !== id);
+    if (b) noteSpeciesRemoved(b.species);
     renderBirdCards();
   } catch(e) { console.error(e); }
 }
