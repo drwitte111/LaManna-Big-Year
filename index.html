@@ -337,7 +337,12 @@
   /* Legend */
   .finder-legend { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.9rem; align-items: center; }
   .finder-legend-label { font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(245,237,214,0.35); margin-right: 0.25rem; }
-  .fl-chip { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.68rem; color: rgba(245,237,214,0.55); border: 1px solid rgba(200,149,42,0.15); border-radius: 3px; padding: 0.15rem 0.4rem; }
+  .fl-chip { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.68rem; color: rgba(245,237,214,0.55); border: 1px solid rgba(200,149,42,0.15); border-radius: 3px; padding: 0.15rem 0.4rem; cursor: pointer; transition: all 0.15s; background: none; font-family: 'Source Sans 3', sans-serif; }
+  .fl-chip:hover { border-color: rgba(200,149,42,0.45); color: var(--cream); }
+  .fl-chip.active { background: rgba(200,149,42,0.18); border-color: var(--gold); color: var(--cream); }
+  .fl-chip.empty { opacity: 0.28; cursor: default; }
+  .fl-chip.empty:hover { border-color: rgba(200,149,42,0.15); color: rgba(245,237,214,0.55); }
+  .fl-count { color: rgba(245,237,214,0.35); }
   .fl-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 
   /* COUNTDOWN */
@@ -550,10 +555,12 @@
     </div>
     <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;">
       <input id="bird-search" class="search-input" type="text" placeholder="Filter species…" oninput="renderBirdCards()" style="flex:1;min-width:150px;margin-bottom:0;">
-      <select id="bird-sort" class="form-input" style="max-width:170px;" onchange="renderBirdCards()">
+      <select id="bird-sort" class="form-input" style="max-width:190px;" onchange="renderBirdCards()">
         <option value="time">Sort: Most recent</option>
         <option value="name">Sort: Name (A–Z)</option>
         <option value="location">Sort: Location (A–Z)</option>
+        <option value="finders-asc">Sort: Rarest first</option>
+        <option value="finders-desc">Sort: Most found first</option>
       </select>
     </div>
     <div class="finder-legend" id="finder-legend"></div>
@@ -1765,14 +1772,30 @@ function finderTier(count) {
   return Math.min(count, 10);
 }
 
-function renderFinderLegend() {
+// Legend doubles as a filter: click a color to show only birds at that tier.
+let finderFilter = null;
+
+window.setFinderFilter = function(tier) {
+  finderFilter = (finderFilter === tier) ? null : tier;
+  renderBirdCards();
+}
+
+function renderFinderLegend(tierCounts) {
   const el = document.getElementById('finder-legend');
   if (!el) return;
-  el.innerHTML = '<span class="finder-legend-label">Found by</span>' +
-    FINDER_SCALE.map(s => `
-      <span class="fl-chip" title="${s.label}">
-        <span class="fl-dot" style="background:${s.color};"></span>${s.n === 10 ? '10+' : s.n}
-      </span>`).join('');
+  const chips = FINDER_SCALE.map(s => {
+    const n = tierCounts[s.n] || 0;
+    const label = s.n === 10 ? '10+' : String(s.n);
+    const cls = 'fl-chip' + (finderFilter === s.n ? ' active' : '') + (n ? '' : ' empty');
+    const click = n ? ` onclick="window.setFinderFilter(${s.n})"` : '';
+    return `
+      <button type="button" class="${cls}"${click} title="${s.label} · found by ${label} ${s.n === 1 ? 'person' : 'people'}${n ? ` · ${n} of yours` : ''}">
+        <span class="fl-dot" style="background:${s.color};"></span>${label}${n ? `<span class="fl-count">${n}</span>` : ''}
+      </button>`;
+  }).join('');
+  const clear = finderFilter
+    ? '<button type="button" class="fl-chip active" onclick="window.setFinderFilter(null)" title="Show every color">✕ Clear</button>' : '';
+  el.innerHTML = '<span class="finder-legend-label">Found by</span>' + chips + clear;
 }
 
 async function renderBirdsPage(userKey, isOwn) {
@@ -1804,7 +1827,7 @@ async function renderBirdsPage(userKey, isOwn) {
     }
   }
 
-  renderFinderLegend();
+  finderFilter = null;
 
   const [snap] = await Promise.all([
     getDocs(collection(db, 'users', userKey, 'birds')),
@@ -1840,10 +1863,24 @@ window.renderBirdCards = function() {
       return det === birdsDetFilter;
     });
   }
+
+  // Finder counts drive the color legend, its per-tier tallies, and its filter.
+  const finders = b => speciesFinderCounts[b.species.toLowerCase()] || 0;
+  const tierCounts = {};
+  cachedBirds.forEach(b => {
+    const t = finderTier(finders(b));
+    if (t) tierCounts[t] = (tierCounts[t] || 0) + 1;
+  });
+  renderFinderLegend(tierCounts);
+  if (finderFilter) filtered = filtered.filter(b => finderTier(finders(b)) === finderFilter);
+
   if (sortMode === 'name') {
     filtered.sort((a, b) => a.species.localeCompare(b.species));
   } else if (sortMode === 'location') {
     filtered.sort((a, b) => (a.location || '').localeCompare(b.location || ''));
+  } else if (sortMode === 'finders-asc' || sortMode === 'finders-desc') {
+    const dir = sortMode === 'finders-asc' ? 1 : -1;
+    filtered.sort((a, b) => (finders(a) - finders(b)) * dir || a.species.localeCompare(b.species));
   } else {
     // Most recent — same "newest update wins" logic used on the Activity tab.
     const ts = b => {
@@ -1867,7 +1904,7 @@ window.renderBirdCards = function() {
 
   const grid = document.getElementById('birds-grid');
   if (!filtered.length) {
-    const msg = (search || birdsDetFilter !== 'all') ? 'No matches.' : 'Nothing logged yet — get outside!';
+    const msg = (search || birdsDetFilter !== 'all' || finderFilter) ? 'No matches.' : 'Nothing logged yet — get outside!';
     grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">' + msg + '</div>';
     return;
   }
