@@ -2607,12 +2607,18 @@ window.renderActivityCards = function() {
   const finders = it => finderCount(it.species);
 
   // Chip tallies come from the whole feed, so they don't jump while filtering.
+  // Counted per species, not per card — a bird 5 people logged is one species
+  // at tier 5, even though it appears as 5 sightings below.
   const tierCounts = {};
+  const tallied = new Set();
   activityItems.forEach(it => {
+    const sp = it.species.toLowerCase();
+    if (tallied.has(sp)) return;
+    tallied.add(sp);
     const t = finderTier(finders(it));
     if (t) tierCounts[t] = (tierCounts[t] || 0) + 1;
   });
-  renderFinderLegend('activity-finder-legend', tierCounts, activityFinderFilter, 'setActivityFinderFilter', 'sightings');
+  renderFinderLegend('activity-finder-legend', tierCounts, activityFinderFilter, 'setActivityFinderFilter', 'species');
 
   let list = activityItems.slice();
   if (search) list = list.filter(it =>
