@@ -587,12 +587,6 @@
     </div>
     <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;">
       <input id="activity-search" class="search-input" type="text" placeholder="Filter species, person, place…" oninput="renderActivityCards()" style="flex:1;min-width:150px;margin-bottom:0;">
-      <select id="activity-sort" class="form-input" style="max-width:190px;" onchange="renderActivityCards()">
-        <option value="time">Sort: Most recent</option>
-        <option value="name">Sort: Species (A–Z)</option>
-        <option value="finders-asc">Sort: Rarest first</option>
-        <option value="finders-desc">Sort: Most found first</option>
-      </select>
     </div>
     <div class="finder-legend" id="activity-finder-legend"></div>
     <div class="message-list" id="activity-list"><div class="empty-state">Loading…</div></div>
@@ -2610,7 +2604,6 @@ window.renderActivityCards = function() {
   const listEl = document.getElementById('activity-list');
   if (!listEl) return;
   const search = (document.getElementById('activity-search')?.value || '').toLowerCase();
-  const sortMode = document.getElementById('activity-sort')?.value || 'time';
   const finders = it => finderCount(it.species);
 
   // Chip tallies come from the whole feed, so they don't jump while filtering.
@@ -2630,18 +2623,11 @@ window.renderActivityCards = function() {
   );
   if (activityFinderFilter) list = list.filter(it => finderTier(finders(it)) === activityFinderFilter);
 
-  if (sortMode === 'name') {
-    list.sort((a, b) => a.species.localeCompare(b.species) || activityTs(b) - activityTs(a));
-  } else if (sortMode === 'finders-asc' || sortMode === 'finders-desc') {
-    const dir = sortMode === 'finders-asc' ? 1 : -1;
-    list.sort((a, b) => (finders(a) - finders(b)) * dir || a.species.localeCompare(b.species) || activityTs(b) - activityTs(a));
-  } else {
-    list.sort((a, b) => {
-      const ta = activityTs(a), tb = activityTs(b);
-      if (ta !== tb) return tb - ta;
-      return (b.date || '').localeCompare(a.date || '');
-    });
-  }
+  list.sort((a, b) => {
+    const ta = activityTs(a), tb = activityTs(b);
+    if (ta !== tb) return tb - ta;
+    return (b.date || '').localeCompare(a.date || '');
+  });
 
   if (!list.length) {
     listEl.innerHTML = `<div class="empty-state">${
