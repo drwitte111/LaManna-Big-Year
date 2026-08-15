@@ -313,27 +313,28 @@
   .bird-score.seen { background: rgba(74,103,65,0.3); color: #b8d4b0; border: 1px solid rgba(74,103,65,0.5); }
   .bird-score.heard { background: rgba(92,61,30,0.4); color: #d4b896; border: 1px solid rgba(92,61,30,0.6); }
 
-  /* FINDER-COUNT COLOR SCALE — how many people family-wide have logged this species */
-  .bird-card-f1  { background: rgba(214,74,58,0.16);   border-color: rgba(214,74,58,0.6); }
-  .bird-card-f2  { background: rgba(222,126,44,0.16);  border-color: rgba(222,126,44,0.6); }
-  .bird-card-f3  { background: rgba(214,178,60,0.16);  border-color: rgba(214,178,60,0.6); }
-  .bird-card-f4  { background: rgba(90,168,90,0.16);   border-color: rgba(90,168,90,0.6); }
-  .bird-card-f5  { background: rgba(74,134,216,0.16);  border-color: rgba(74,134,216,0.6); }
-  .bird-card-f6  { background: rgba(102,90,205,0.18);  border-color: rgba(102,90,205,0.65); }
-  .bird-card-f7  { background: rgba(166,90,208,0.16);  border-color: rgba(166,90,208,0.6); }
-  .bird-card-f8  { background: rgba(184,190,200,0.14); border-color: rgba(184,190,200,0.6); }
-  .bird-card-f9  { background: rgba(176,111,58,0.18);  border-color: rgba(176,111,58,0.7); }
-  .bird-card-f10 { background: rgba(245,245,240,0.16); border-color: rgba(245,245,240,0.7); }
-  .bird-card-f1  .bird-name { color: #f0a79c; }
-  .bird-card-f2  .bird-name { color: #f5c089; }
-  .bird-card-f3  .bird-name { color: #f0dd9a; }
-  .bird-card-f4  .bird-name { color: #a8dea8; }
-  .bird-card-f5  .bird-name { color: #a6c8f2; }
-  .bird-card-f6  .bird-name { color: #b8b0f0; }
-  .bird-card-f7  .bird-name { color: #dcaef0; }
-  .bird-card-f8  .bird-name { color: #e2e6ec; }
-  .bird-card-f9  .bird-name { color: #eab887; }
-  .bird-card-f10 .bird-name { color: #ffffff; }
+  /* FINDER-COUNT COLOR SCALE — how many people family-wide have logged this
+     species. Shared by the My Birds cards and the Activity feed cards. */
+  .tier-f1  { background: rgba(214,74,58,0.16);   border-color: rgba(214,74,58,0.6); }
+  .tier-f2  { background: rgba(222,126,44,0.16);  border-color: rgba(222,126,44,0.6); }
+  .tier-f3  { background: rgba(214,178,60,0.16);  border-color: rgba(214,178,60,0.6); }
+  .tier-f4  { background: rgba(90,168,90,0.16);   border-color: rgba(90,168,90,0.6); }
+  .tier-f5  { background: rgba(74,134,216,0.16);  border-color: rgba(74,134,216,0.6); }
+  .tier-f6  { background: rgba(102,90,205,0.18);  border-color: rgba(102,90,205,0.65); }
+  .tier-f7  { background: rgba(166,90,208,0.16);  border-color: rgba(166,90,208,0.6); }
+  .tier-f8  { background: rgba(184,190,200,0.14); border-color: rgba(184,190,200,0.6); }
+  .tier-f9  { background: rgba(176,111,58,0.18);  border-color: rgba(176,111,58,0.7); }
+  .tier-f10 { background: rgba(245,245,240,0.16); border-color: rgba(245,245,240,0.7); }
+  .tier-f1  .bird-name, .tier-f1  .tier-name { color: #f0a79c; }
+  .tier-f2  .bird-name, .tier-f2  .tier-name { color: #f5c089; }
+  .tier-f3  .bird-name, .tier-f3  .tier-name { color: #f0dd9a; }
+  .tier-f4  .bird-name, .tier-f4  .tier-name { color: #a8dea8; }
+  .tier-f5  .bird-name, .tier-f5  .tier-name { color: #a6c8f2; }
+  .tier-f6  .bird-name, .tier-f6  .tier-name { color: #b8b0f0; }
+  .tier-f7  .bird-name, .tier-f7  .tier-name { color: #dcaef0; }
+  .tier-f8  .bird-name, .tier-f8  .tier-name { color: #e2e6ec; }
+  .tier-f9  .bird-name, .tier-f9  .tier-name { color: #eab887; }
+  .tier-f10 .bird-name, .tier-f10 .tier-name { color: #ffffff; }
 
   .bird-finders { display: inline-block; font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: 2px; margin-left: 0.3rem; font-weight: 600; letter-spacing: 0.04em; background: rgba(245,237,214,0.08); border: 1px solid rgba(245,237,214,0.18); color: rgba(245,237,214,0.7); font-family: 'Source Sans 3', sans-serif; cursor: pointer; transition: all 0.15s; }
   .bird-finders:hover { background: rgba(200,149,42,0.2); border-color: var(--gold); color: var(--cream); }
@@ -584,6 +585,16 @@
       <div class="page-title">All Activity</div>
       <div class="page-subtitle">Every sighting, everyone, newest first</div>
     </div>
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;">
+      <input id="activity-search" class="search-input" type="text" placeholder="Filter species, person, place…" oninput="renderActivityCards()" style="flex:1;min-width:150px;margin-bottom:0;">
+      <select id="activity-sort" class="form-input" style="max-width:190px;" onchange="renderActivityCards()">
+        <option value="time">Sort: Most recent</option>
+        <option value="name">Sort: Species (A–Z)</option>
+        <option value="finders-asc">Sort: Rarest first</option>
+        <option value="finders-desc">Sort: Most found first</option>
+      </select>
+    </div>
+    <div class="finder-legend" id="activity-finder-legend"></div>
     <div class="message-list" id="activity-list"><div class="empty-state">Loading…</div></div>
   </div>
   <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
@@ -1817,6 +1828,8 @@ window.showFinders = function(species) {
 }
 
 // Legend doubles as a filter: click a color to show only birds at that tier.
+// Shared by My Birds and All Activity — each passes its own element, active
+// tier, and click handler.
 let finderFilter = null;
 
 window.setFinderFilter = function(tier) {
@@ -1824,21 +1837,21 @@ window.setFinderFilter = function(tier) {
   renderBirdCards();
 }
 
-function renderFinderLegend(tierCounts) {
-  const el = document.getElementById('finder-legend');
+function renderFinderLegend(elId, tierCounts, activeTier, handler, countNoun) {
+  const el = document.getElementById(elId);
   if (!el) return;
   const chips = FINDER_SCALE.map(s => {
     const n = tierCounts[s.n] || 0;
     const label = s.n === 10 ? '10+' : String(s.n);
-    const cls = 'fl-chip' + (finderFilter === s.n ? ' active' : '') + (n ? '' : ' empty');
-    const click = n ? ` onclick="window.setFinderFilter(${s.n})"` : '';
+    const cls = 'fl-chip' + (activeTier === s.n ? ' active' : '') + (n ? '' : ' empty');
+    const click = n ? ` onclick="window.${handler}(${s.n})"` : '';
     return `
-      <button type="button" class="${cls}"${click} title="${s.label} · found by ${label} ${s.n === 1 ? 'person' : 'people'}${n ? ` · ${n} of yours` : ''}">
+      <button type="button" class="${cls}"${click} title="${s.label} · found by ${label} ${s.n === 1 ? 'person' : 'people'}${n ? ` · ${n} ${countNoun}` : ''}">
         <span class="fl-dot" style="background:${s.color};"></span>${label}${n ? `<span class="fl-count">${n}</span>` : ''}
       </button>`;
   }).join('');
-  const clear = finderFilter
-    ? '<button type="button" class="fl-chip active" onclick="window.setFinderFilter(null)" title="Show every color">✕ Clear</button>' : '';
+  const clear = activeTier
+    ? `<button type="button" class="fl-chip active" onclick="window.${handler}(null)" title="Show every color">✕ Clear</button>` : '';
   el.innerHTML = '<span class="finder-legend-label">Found by</span>' + chips + clear;
 }
 
@@ -1915,7 +1928,7 @@ window.renderBirdCards = function() {
     const t = finderTier(finders(b));
     if (t) tierCounts[t] = (tierCounts[t] || 0) + 1;
   });
-  renderFinderLegend(tierCounts);
+  renderFinderLegend('finder-legend', tierCounts, finderFilter, 'setFinderFilter', 'of yours');
   if (finderFilter) filtered = filtered.filter(b => finderTier(finders(b)) === finderFilter);
 
   if (sortMode === 'name') {
@@ -1964,7 +1977,7 @@ window.renderBirdCards = function() {
       ? `onclick="window.startEditBird('${b.id}')" style="cursor:pointer;" title="Click to edit"` : '';
     const finders = finderCount(b.species);
     const tier = finderTier(finders);
-    const tierCls = tier ? ` bird-card-f${tier}` : '';
+    const tierCls = tier ? ` tier-f${tier}` : '';
     const spArg = esc(b.species).replace(/'/g, "\\'");
     const finderBadge = finders
       ? `<button type="button" class="bird-finders" onclick="event.stopPropagation(); window.showFinders('${spArg}')" title="Click to see who found this">👥 ${finders}</button>` : '';
@@ -2532,16 +2545,30 @@ window.dismissShare = async function(shareId) {
 
 
 // ── ALL ACTIVITY ──────────────────────────────────────────────────────────
+let activityItems = [];
+let activityFinderFilter = null;
+
+window.setActivityFinderFilter = function(tier) {
+  activityFinderFilter = (activityFinderFilter === tier) ? null : tier;
+  renderActivityCards();
+}
+
 async function renderActivity() {
   const listEl = document.getElementById('activity-list');
   listEl.innerHTML = '<div class="empty-state">Loading…</div>';
+  activityFinderFilter = null;
+  document.getElementById('activity-search').value = '';
 
   await loadAllUsers();
 
+  // One sweep feeds both the feed and the family-wide finder tally, so the
+  // Activity tab doesn't re-read every list a second time.
   const items = [];
+  const finders = {};
   for (const [key, u] of Object.entries(allUsersCache)) {
     if (key === '__admin__') continue;
     const snap = await getDocs(collection(db, 'users', key, 'birds'));
+    const best = {}; // this person's best score per species
     snap.docs.forEach(d => {
       const b = d.data();
       items.push({
@@ -2556,40 +2583,91 @@ async function renderActivity() {
         updatedAt: b.updatedAt,
         date: b.date
       });
+      const sp = (b.species || '').toLowerCase();
+      if (!sp) return;
+      const s = b.score || (b.detection === 'seen' ? 2 : 1);
+      if (!best[sp] || s > best[sp]) best[sp] = s;
+    });
+    Object.entries(best).forEach(([sp, score]) => {
+      (finders[sp] = finders[sp] || []).push({ key, name: u.display || key, score });
+    });
+  }
+  speciesFinders = finders;
+  speciesFinderCountsAt = Date.now();
+
+  activityItems = items;
+  renderActivityCards();
+}
+
+// Sort by whichever is more recent — original log time, or a later score change.
+function activityTs(it) {
+  const added = it.addedAt?.toMillis ? it.addedAt.toMillis() : 0;
+  const updated = it.updatedAt?.toMillis ? it.updatedAt.toMillis() : 0;
+  return Math.max(added, updated);
+}
+
+window.renderActivityCards = function() {
+  const listEl = document.getElementById('activity-list');
+  if (!listEl) return;
+  const search = (document.getElementById('activity-search')?.value || '').toLowerCase();
+  const sortMode = document.getElementById('activity-sort')?.value || 'time';
+  const finders = it => finderCount(it.species);
+
+  // Chip tallies come from the whole feed, so they don't jump while filtering.
+  const tierCounts = {};
+  activityItems.forEach(it => {
+    const t = finderTier(finders(it));
+    if (t) tierCounts[t] = (tierCounts[t] || 0) + 1;
+  });
+  renderFinderLegend('activity-finder-legend', tierCounts, activityFinderFilter, 'setActivityFinderFilter', 'sightings');
+
+  let list = activityItems.slice();
+  if (search) list = list.filter(it =>
+    it.species.toLowerCase().includes(search) ||
+    (it.location || '').toLowerCase().includes(search) ||
+    (it.display || '').toLowerCase().includes(search) ||
+    (it.realName || '').toLowerCase().includes(search)
+  );
+  if (activityFinderFilter) list = list.filter(it => finderTier(finders(it)) === activityFinderFilter);
+
+  if (sortMode === 'name') {
+    list.sort((a, b) => a.species.localeCompare(b.species) || activityTs(b) - activityTs(a));
+  } else if (sortMode === 'finders-asc' || sortMode === 'finders-desc') {
+    const dir = sortMode === 'finders-asc' ? 1 : -1;
+    list.sort((a, b) => (finders(a) - finders(b)) * dir || a.species.localeCompare(b.species) || activityTs(b) - activityTs(a));
+  } else {
+    list.sort((a, b) => {
+      const ta = activityTs(a), tb = activityTs(b);
+      if (ta !== tb) return tb - ta;
+      return (b.date || '').localeCompare(a.date || '');
     });
   }
 
-  // Sort by whichever is more recent — original log time, or a later score change.
-  function ts(it) {
-    const added = it.addedAt?.toMillis ? it.addedAt.toMillis() : 0;
-    const updated = it.updatedAt?.toMillis ? it.updatedAt.toMillis() : 0;
-    return Math.max(added, updated);
-  }
-  items.sort((a, b) => {
-    const ta = ts(a), tb = ts(b);
-    if (ta !== tb) return tb - ta;
-    return (b.date || '').localeCompare(a.date || '');
-  });
-
-  if (!items.length) {
-    listEl.innerHTML = '<div class="empty-state">No sightings logged yet.</div>';
+  if (!list.length) {
+    listEl.innerHTML = `<div class="empty-state">${
+      (search || activityFinderFilter) ? 'No matches.' : 'No sightings logged yet.'}</div>`;
     return;
   }
 
-  listEl.innerHTML = items.map(it => {
+  listEl.innerHTML = list.map(it => {
     const scoreLabel = it.detection === 'seen' ? '👁 Seen · 2pts' : '👂 Heard · 1pt';
     const scoreCls = it.detection === 'seen' ? 'seen' : 'heard';
     const wasUpdated = it.updatedAt?.toMillis && (!it.addedAt?.toMillis || it.updatedAt.toMillis() > it.addedAt.toMillis());
     const displayTs = wasUpdated ? it.updatedAt : it.addedAt;
+    const count = finders(it);
+    const tier = finderTier(count);
+    const spArg = esc(it.species).replace(/'/g, "\\'");
+    const finderBadge = count
+      ? `<button type="button" class="bird-finders" onclick="window.showFinders('${spArg}')" title="Click to see who found this">👥 ${count}</button>` : '';
     return `
-      <div class="message-card">
+      <div class="message-card${tier ? ` tier-f${tier}` : ''}">
         <div class="msg-header">
           <div class="msg-avatar" style="cursor:pointer;" onclick="window.viewProfile('${it.key}')">${initials(it.display)}</div>
           <span class="msg-author" style="cursor:pointer;" onclick="window.viewProfile('${it.key}')">${esc(it.display)}${it.realName ? ` <span style="font-weight:400;color:rgba(245,237,214,0.4);">• ${esc(it.realName)}</span>` : ''}</span>
           <span class="msg-time">${wasUpdated ? 'updated ' : ''}${formatTime(displayTs)}</span>
         </div>
         <div class="msg-text">
-          🐦 <strong style="cursor:pointer;" onclick="window.showBirdImage('${esc(it.species).replace(/'/g, "\\'")}')" title="Click for a photo">${esc(it.species)}</strong> <span class="bird-score ${scoreCls}">${scoreLabel}</span>
+          🐦 <strong class="tier-name" style="cursor:pointer;" onclick="window.showBirdImage('${spArg}')" title="Click for a photo">${esc(it.species)}</strong> <span class="bird-score ${scoreCls}">${scoreLabel}</span>${finderBadge}
           ${it.location ? `<br><span class="bird-location">📍 ${esc(it.location)}</span>` : ''}
           ${it.note ? `<br><span class="bird-note">${esc(it.note)}</span>` : ''}
         </div>
