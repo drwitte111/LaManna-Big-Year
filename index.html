@@ -475,6 +475,24 @@
   .tier-f10 { background: rgba(245,245,240,0.20); border-color: rgba(245,245,240,0.75); }
   .detection-btn.active { background: rgba(200,149,42,0.22); border-color: var(--gold); }
 
+  /* --- 3. "Use my location" button --- */
+  .label-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.4rem; }
+  .btn-geo {
+    background: rgba(200,149,42,0.15); border: 1px solid rgba(200,149,42,0.4);
+    border-radius: var(--radius); padding: 0.2rem 0.5rem; color: var(--gold);
+    font-family: 'Source Sans 3', sans-serif; font-size: 0.72rem; line-height: 1.4;
+    cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .btn-geo:hover { background: rgba(200,149,42,0.28); }
+  .btn-geo:disabled { opacity: 0.5; cursor: wait; }
+  .geo-status { font-size: 0.72rem; color: rgba(245,237,214,0.55); font-style: italic; margin-top: 0.3rem; min-height: 1em; }
+  .geo-status.error { color: #e07060; font-style: normal; }
+  .suggestion-header {
+    padding: 0.35rem 0.85rem; font-size: 0.65rem; letter-spacing: 0.08em;
+    text-transform: uppercase; color: rgba(200,149,42,0.7);
+    border-bottom: 1px solid rgba(200,149,42,0.2); background: rgba(200,149,42,0.08);
+  }
+
   /* --- 2. Dates and timestamps in full cream --- */
   .bird-date,
   .msg-time,
@@ -583,9 +601,13 @@
           <div id="species-suggestions" class="suggestions-dropdown"></div>
         </div>
         <div style="position:relative;">
-          <label class="form-label">Location</label>
+          <div class="label-row">
+            <label class="form-label" style="margin-bottom:0;">Location</label>
+            <button type="button" class="btn-geo" id="btn-geo" onclick="useMyLocation()">📍 Use my location</button>
+          </div>
           <input id="bird-location" class="form-input" type="text" placeholder="e.g. Stow, OH" autocomplete="off" oninput="filterCities()" onkeydown="cityKeydown(event)">
           <div id="city-suggestions" class="suggestions-dropdown"></div>
+          <div id="geo-status" class="geo-status"></div>
         </div>
         <div>
           <label class="form-label">Date</label>
@@ -3243,6 +3265,115 @@ window.selectCity = function(city, state, lat, lng) {
   window._selectedLat = lat;
   window._selectedLng = lng;
   cityIndex = -1;
+}
+
+// ── "USE MY LOCATION" ───────────────────────────────────────────────────────
+// Uses the browser's geolocation API, then finds the closest cities in the
+// already-loaded CITY_DATA and offers the 3 nearest in the existing dropdown.
+// No API key and no reverse-geocoding service — CITY_DATA already has lat/lng.
+//
+// PERMISSION NOTE: we deliberately store NOTHING about a denial, and call
+// getCurrentPosition() fresh on every click, so the browser is free to prompt
+// again any time it's willing to. A grant is remembered by the browser itself,
+// so an allowed user is never re-prompted. Be aware the browser — not this
+// code — owns that decision: once someone taps "Don't Allow", most browsers
+// suppress the prompt for the rest of that session and fail instantly instead.
+// When that happens we show the user how to re-enable it rather than silently
+// doing nothing.
+
+function haversineMiles(lat1, lng1, lat2, lng2) {
+  const R = 3958.8; // earth radius, miles
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat/2) ** 2 +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function nearestCities(lat, lng, count) {
+  const scored = [];
+  for (let i = 0; i < CITY_DATA.length; i++) {
+    const row = CITY_DATA[i];
+    if (!isFinite(row[2]) || !isFinite(row[3])) continue;
+    // Cheap bounding-box reject before the expensive trig — ~1 degree of
+    // latitude is ~69 miles, so anything beyond 1.5 degrees can't be nearest.
+    if (Math.abs(row[2] - lat) > 1.5 || Math.abs(row[3] - lng) > 1.5) continue;
+    scored.push([haversineMiles(lat, lng, row[2], row[3]), row]);
+  }
+  scored.sort((a, b) => a[0] - b[0]);
+  return scored.slice(0, count);
+}
+
+function setGeoStatus(msg, isError) {
+  const el = document.getElementById('geo-status');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.classList.toggle('error', !!isError);
+}
+
+window.useMyLocation = function() {
+  const btn = document.getElementById('btn-geo');
+  const box = document.getElementById('city-suggestions');
+
+  if (!navigator.geolocation) {
+    setGeoStatus('This browser does not support location.', true);
+    return;
+  }
+  if (!CITY_DATA.length) {
+    setGeoStatus('City list is still loading — try again in a second.', true);
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = '📍 Locating…'; }
+  setGeoStatus('Waiting for location…');
+
+  const restoreBtn = () => {
+    if (btn) { btn.disabled = false; btn.textContent = '📍 Use my location'; }
+  };
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      restoreBtn();
+      const { latitude, longitude } = pos.coords;
+      const near = nearestCities(latitude, longitude, 3);
+
+      if (!near.length) {
+        setGeoStatus('No nearby city found in the list — type it manually.', true);
+        return;
+      }
+
+      // Auto-fill the closest match, then offer the runners-up in the
+      // dropdown, since city center points can put you in a neighboring
+      // suburb even when the GPS fix is perfect.
+      const [dist, row] = near[0];
+      selectCity(row[0], row[1], row[2], row[3]);
+      setGeoStatus(`Closest city: ${row[0]}, ${row[1]} (~${dist.toFixed(1)} mi from you)`);
+
+      if (near.length > 1 && box) {
+        box.innerHTML = '<div class="suggestion-header">Nearest to you</div>' +
+          near.map(([d, r]) =>
+            `<div class="suggestion-item" onmousedown="selectCity('${String(r[0]).replace(/'/g,"\\'")}','${r[1]}',${r[2]},${r[3]})">${r[0]}, ${r[1]} · ${d.toFixed(1)} mi</div>`
+          ).join('');
+        box.classList.add('open');
+      }
+    },
+    err => {
+      restoreBtn();
+      if (err.code === err.PERMISSION_DENIED) {
+        setGeoStatus('Location blocked. Re-enable it for this site in your browser settings, then tap again.', true);
+      } else if (err.code === err.POSITION_UNAVAILABLE) {
+        setGeoStatus('Could not get a fix. Try again outdoors or type the city.', true);
+      } else if (err.code === err.TIMEOUT) {
+        setGeoStatus('Location timed out — tap to try again.', true);
+      } else {
+        setGeoStatus('Location failed — type the city instead.', true);
+      }
+    },
+    // maximumAge:0 forces a fresh fix rather than a stale cached one, so
+    // logging two birds in two towns doesn't reuse the first town.
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+  );
 }
 
 window.cityKeydown = function(e) {
