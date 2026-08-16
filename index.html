@@ -1002,6 +1002,65 @@ function formatTime(ts) {
 
 function initials(name) { return String(name||'?').slice(0,2).toUpperCase(); }
 
+// ── SPECIES EMOJI ──────────────────────────────────────────────────────────
+// Picks a per-species emoji instead of a generic bird. Rules are checked in
+// order and the FIRST match wins, so put exceptions above the group they'd
+// otherwise fall into (e.g. "Turkey Vulture" must hit the raptor rule before
+// the turkey rule; "Common Nighthawk" must be excluded before "hawk").
+// Word boundaries (\b) keep "Black-crowned Night-Heron" out of the crow rule.
+// Unicode 15 glyphs 🪿 (goose) and 🐦‍⬛ (black bird) need iOS 16.4+ /
+// Android 13+; older devices show a fallback box, so swap those two lines
+// for 🦆 and 🐦 if that matters.
+const BIRD_EMOJI_RULES = [
+  // — exceptions that must be caught first —
+  [/\bnighthawk|nightjar|whip-poor-will|chuck-will/i,                  '🌙'],
+  [/\bvulture|condor\b/i,                                              '🦅'],
+
+  // — raptors —
+  [/\beagle|hawk|falcon|kestrel|merlin|osprey|harrier|kite|goshawk|caracara\b/i, '🦅'],
+  [/\bowl\b|owlet/i,                                                   '🦉'],
+
+  // — waterfowl —
+  [/\bgoose|geese|brant\b/i,                                           '🪿'],
+  [/\bswan\b/i,                                                        '🦢'],
+  [/\bduck|teal|mallard|merganser|scaup|wigeon|goldeneye|bufflehead|shoveler|gadwall|pintail|canvasback|redhead|eider|scoter|oldsquaw|longtail\b/i, '🦆'],
+  [/\bloon|grebe|cormorant|pelican|anhinga|coot|gallinule|moorhen|rail\b/i, '🦆'],
+
+  // — long-legged waders —
+  [/\bheron|egret|crane|ibis|stork|bittern|spoonbill\b/i,              '🦢'],
+  [/\bflamingo\b/i,                                                    '🦩'],
+
+  // — gamebirds —
+  [/\bturkey\b/i,                                                      '🦃'],
+  [/\bpheasant|grouse|quail|bobwhite|partridge|ptarmigan|chukar\b/i,   '🐓'],
+  [/\bchicken|rooster|junglefowl\b/i,                                  '🐓'],
+  [/\bpeacock|peafowl|peahen\b/i,                                      '🦚'],
+
+  // — pigeons & gulls —
+  [/\bdove|pigeon\b/i,                                                 '🕊️'],
+  [/\bgull|tern|skimmer|jaeger|kittiwake\b/i,                          '🕊️'],
+
+  // — corvids & other black birds —
+  [/\bcrow|raven|grackle|starling|blackbird|cowbird|rook|jackdaw\b/i,  '🐦‍⬛'],
+
+  // — exotics / cage birds —
+  [/\bparrot|parakeet|macaw|conure|cockatiel|cockatoo|budgie|lovebird\b/i, '🦜'],
+  [/\bpenguin\b/i,                                                     '🐧'],
+  [/\bostrich|emu|rhea|cassowary\b/i,                                  '🦤'],
+
+  // — woodpeckers —
+  [/\bwoodpecker|flicker|sapsucker\b/i,                                '🪶'],
+];
+
+function birdEmoji(species) {
+  const name = String(species || '');
+  for (const [re, emoji] of BIRD_EMOJI_RULES) {
+    if (re.test(name)) return emoji;
+  }
+  return '🐦';
+}
+window.birdEmoji = birdEmoji;
+
 // Mimics a Firestore Timestamp's .toMillis() shape, for optimistic local
 // cache updates made before the real serverTimestamp() round-trips back.
 // Without this, a just-added/just-upgraded bird has no addedAt/updatedAt
@@ -2038,7 +2097,7 @@ window.renderBirdCards = function() {
       <div class="bird-card${tierCls}" ${editAttrs}>
         ${delBtn}
         ${shareBtn}
-        <div class="bird-name">🐦 ${esc(b.species)} <span class="bird-score ${scoreCls}">${scoreLabel}</span>${finderBadge}</div>
+        <div class="bird-name">${birdEmoji(b.species)} ${esc(b.species)} <span class="bird-score ${scoreCls}">${scoreLabel}</span>${finderBadge}</div>
         ${b.location ? `<div class="bird-location">📍 ${esc(b.location)}</div>` : ''}
         <div class="bird-date">${b.date || ''}</div>
         ${b.note ? `<div class="bird-note">${esc(b.note)}</div>` : ''}
@@ -2499,7 +2558,7 @@ async function renderSharedPage() {
           <span class="msg-time">${formatTime(s.ts)}</span>
         </div>
         <div class="msg-text">
-          🐦 <strong>${esc(s.species)}</strong> <span class="bird-score ${det}">${scoreLabel}</span>
+          ${birdEmoji(s.species)} <strong>${esc(s.species)}</strong> <span class="bird-score ${det}">${scoreLabel}</span>
           ${s.location ? `<br><span class="bird-location">📍 ${esc(s.location)}</span>` : ''}
         </div>
       </div>`;
@@ -2512,7 +2571,7 @@ window.openShareConfirm = function(shareId) {
   const s = sharedItemsById[shareId];
   if (!s) return;
   showModal(`
-    <div class="modal-title">🐦 ${esc(s.species)}</div>
+    <div class="modal-title">${birdEmoji(s.species)} ${esc(s.species)}</div>
     <div class="modal-body">${esc(s.fromDisplay)} shared this sighting with you${s.location ? ' from ' + esc(s.location) : ''}. Log it to your own list?</div>
     <div class="modal-actions">
       <button class="btn-logout" onclick="window.dismissShare('${shareId}')">Dismiss</button>
@@ -2718,7 +2777,7 @@ window.renderActivityCards = function() {
           <span class="msg-time">${wasUpdated ? 'updated ' : ''}${formatTime(displayTs)}</span>
         </div>
         <div class="msg-text">
-          🐦 <strong class="tier-name" style="cursor:pointer;" onclick="window.showBirdImage('${spArg}')" title="Click for a photo">${esc(it.species)}</strong> <span class="bird-score ${scoreCls}">${scoreLabel}</span>${finderBadge}
+          ${birdEmoji(it.species)} <strong class="tier-name" style="cursor:pointer;" onclick="window.showBirdImage('${spArg}')" title="Click for a photo">${esc(it.species)}</strong> <span class="bird-score ${scoreCls}">${scoreLabel}</span>${finderBadge}
           ${it.location ? `<br><span class="bird-location">📍 ${esc(it.location)}</span>` : ''}
           ${it.note ? `<br><span class="bird-note">${esc(it.note)}</span>` : ''}
         </div>
@@ -2922,7 +2981,7 @@ function renderProfileBirds() {
     const matched = !isMe && myLowerSpecies.has(b.species.toLowerCase());
     return `
     <div class="bird-card${matched ? ' bird-card-matched' : ''}" style="cursor:pointer;" onclick="window.showBirdImage('${esc(b.species).replace(/'/g, "\\'")}')" title="Click for a photo">
-      <div class="bird-name">🐦 ${esc(b.species)} <span class="bird-score ${scoreCls}">${scoreLabel}</span></div>
+      <div class="bird-name">${birdEmoji(b.species)} ${esc(b.species)} <span class="bird-score ${scoreCls}">${scoreLabel}</span></div>
       ${b.location ? `<div class="bird-location">📍 ${esc(b.location)}</div>` : ''}
       <div class="bird-date">${b.date || ''}</div>
       ${b.note ? `<div class="bird-note">${esc(b.note)}</div>` : ''}
@@ -3029,7 +3088,7 @@ window.renderCompareResults = async function() {
       const otherLabel = diffs ? (otherScoreMap[k] === 2 ? '👁 Seen' : '👂 Heard') : '';
       return `
         <div class="bird-card${shared ? ' bird-card-matched' : ''}" style="cursor:pointer;" onclick="window.showBirdImage('${esc(b.species).replace(/'/g, "\\'")}')" title="Click for a photo">
-          <div class="bird-name">🐦 ${esc(b.species)} <span class="bird-score ${scoreCls}">${scoreLabel}</span></div>
+          <div class="bird-name">${birdEmoji(b.species)} ${esc(b.species)} <span class="bird-score ${scoreCls}">${scoreLabel}</span></div>
           ${diffs ? `<div style="font-size:0.72rem;color:var(--rust);margin-top:0.15rem;">${otherName.split(' ')[0]} has: ${otherLabel}</div>` : ''}
           ${b.location ? `<div class="bird-location">📍 ${esc(b.location)}</div>` : ''}
           <div class="bird-date">${b.date || ''}</div>
