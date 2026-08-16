@@ -424,6 +424,65 @@
     .admin-actions { gap: 0.4rem; }
     .stats-row { grid-template-columns: repeat(2, 1fr); }
   }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     CONTRAST OVERRIDES — kept at the very bottom of <style> so they win.
+     1) Neutral (uncolored) panels get a lighter fill + stronger border.
+     2) Dates and timestamps use full cream instead of faded gray.
+     Colored tier/state classes are re-declared below so they still
+     override the new neutral fill.
+     ═══════════════════════════════════════════════════════════════════ */
+
+  /* --- 1. Lighter neutral panels --- */
+  .login-card,
+  .setpw-card,
+  .stat-card,
+  .post-input-area,
+  .message-card,
+  .add-bird-form,
+  .bird-card,
+  .profile-card,
+  .profile-settings-card,
+  .admin-user-card,
+  .finder-row,
+  .cd-num {
+    background: rgba(245,237,214,0.10);
+    border-color: rgba(200,149,42,0.35);
+  }
+
+  /* Inputs/buttons sit on top of those panels — nudge further so they
+     still read as separate surfaces. */
+  .form-input,
+  .search-input,
+  .admin-pw-input,
+  .detection-btn,
+  .modal-recipient-btn {
+    background: rgba(245,237,214,0.14);
+    border-color: rgba(200,149,42,0.38);
+  }
+
+  /* Colored states must still win over the neutral fill above. */
+  .bird-card-matched { background: rgba(200,149,42,0.20); border-color: rgba(200,149,42,0.60); }
+  .tier-f1  { background: rgba(214,74,58,0.20);   border-color: rgba(214,74,58,0.65); }
+  .tier-f2  { background: rgba(222,126,44,0.20);  border-color: rgba(222,126,44,0.65); }
+  .tier-f3  { background: rgba(214,178,60,0.20);  border-color: rgba(214,178,60,0.65); }
+  .tier-f4  { background: rgba(90,168,90,0.20);   border-color: rgba(90,168,90,0.65); }
+  .tier-f5  { background: rgba(74,134,216,0.20);  border-color: rgba(74,134,216,0.65); }
+  .tier-f6  { background: rgba(102,90,205,0.22);  border-color: rgba(102,90,205,0.70); }
+  .tier-f7  { background: rgba(166,90,208,0.20);  border-color: rgba(166,90,208,0.65); }
+  .tier-f8  { background: rgba(184,190,200,0.18); border-color: rgba(184,190,200,0.65); }
+  .tier-f9  { background: rgba(176,111,58,0.22);  border-color: rgba(176,111,58,0.75); }
+  .tier-f10 { background: rgba(245,245,240,0.20); border-color: rgba(245,245,240,0.75); }
+  .detection-btn.active { background: rgba(200,149,42,0.22); border-color: var(--gold); }
+
+  /* --- 2. Dates and timestamps in full cream --- */
+  .bird-date,
+  .msg-time,
+  .cd-target-date,
+  .cd-progress-labels,
+  .admin-current-pw {
+    color: var(--cream);
+  }
 </style>
 </head>
 <body>
@@ -2720,7 +2779,7 @@ async function renderProfiles() {
       <div class="profile-name">${esc(u.display)}</div>
       <div class="profile-count">${u.points}</div>
       <div class="profile-count-label">points · ${u.speciesCount} species</div>
-      <div style="font-size:0.68rem;color:rgba(245,237,214,0.3);margin-top:0.35rem;font-style:italic;">${daysAgo(u.lastDate)}</div>
+      <div style="font-size:0.68rem;color:var(--cream);margin-top:0.35rem;font-style:italic;">${daysAgo(u.lastDate)}</div>
 
     </div>`).join('');
 }
