@@ -965,8 +965,10 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
 import {
-  getFirestore, collection, doc, getDoc, setDoc, addDoc, deleteDoc,
-  query, orderBy, onSnapshot, getDocs, serverTimestamp, updateDoc
+  getFirestore, collection, doc, getDoc,
+  setDoc as _fsSetDoc, addDoc as _fsAddDoc, deleteDoc as _fsDeleteDoc,
+  updateDoc as _fsUpdateDoc,
+  query, orderBy, onSnapshot, getDocs, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -982,7 +984,39 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Expose Firebase primitives so non-module window functions (e.g. adminRegeocodeAll) can use them
+// ── WRITE WRAPPERS ─────────────────────────────────────────────────────────
+// Every Firestore write goes through these instead of the raw SDK functions,
+// so the shared bird cache is invalidated automatically. Doing it here rather
+// than at each call site means no write path can ever forget — including the
+// admin panel, share-accepts, the username migration, and re-geocode.
+// Only writes that actually touch a birds subcollection bust the cache;
+// posting a message or saving a password leaves it alone.
+function _bustsBirdCache(ref) {
+  return String(ref?.path || '').includes('/birds');
+}
+async function setDoc(ref, ...rest) {
+  const r = await _fsSetDoc(ref, ...rest);
+  if (_bustsBirdCache(ref)) invalidateBirdCache();
+  return r;
+}
+async function addDoc(ref, ...rest) {
+  const r = await _fsAddDoc(ref, ...rest);
+  if (_bustsBirdCache(ref)) invalidateBirdCache();
+  return r;
+}
+async function updateDoc(ref, ...rest) {
+  const r = await _fsUpdateDoc(ref, ...rest);
+  if (_bustsBirdCache(ref)) invalidateBirdCache();
+  return r;
+}
+async function deleteDoc(ref, ...rest) {
+  const r = await _fsDeleteDoc(ref, ...rest);
+  if (_bustsBirdCache(ref)) invalidateBirdCache();
+  return r;
+}
+
+// Expose Firebase primitives so non-module window functions (e.g. adminRegeocodeAll) can use them.
+// _updateDoc points at the WRAPPER, so classic-script writes bust the cache too.
 window._db         = db;
 window._getDocs    = getDocs;
 window._doc        = doc;
@@ -1792,14 +1826,13 @@ window.adminExportCSV = async function() {
   btn.disabled = true; btn.textContent = '⏳ Exporting…';
 
   try {
-    await loadAllUsers();
+    // force = true: an export should never come out of a stale cache.
+    const byUser = await loadAllBirds(true);
     const rows = [['User', 'Bird', 'Location', 'Date', 'Note', 'Pts', 'Detection']];
 
-    for (const [key, u] of Object.entries(allUsersCache)) {
-      if (key === '__admin__') continue;
-      const snap = await getDocs(collection(db, 'users', key, 'birds'));
-      snap.docs.forEach(d => {
-        const b = d.data();
+    for (const [key, birds] of Object.entries(byUser)) {
+      const u = allUsersCache[key] || {};
+      birds.forEach(b => {
         const det = b.detection || (b.score === 2 ? 'seen' : 'heard');
         rows.push([
           csvCell(u.display || key),
@@ -1845,18 +1878,17 @@ function csvCell(val) {
 
 // ── HOME ───────────────────────────────────────────────────────────────────
 async function renderHome() {
-  await loadAllUsers();
+  const byUser = await loadAllBirds();
 
-  // Stats: count each user's points
+  // Stats: count each user's points (served from the shared sweep)
   let myPoints = 0, totalPoints = 0;
   const memberCount = Object.keys(allUsersCache).length;
 
-  for (const uKey of Object.keys(allUsersCache)) {
-    const snap = await getDocs(collection(db, 'users', uKey, 'birds'));
-    const birds = snap.docs.map(d => d.data());
+  for (const [uKey, birds] of Object.entries(byUser)) {
     const best = {};
     birds.forEach(b => {
-      const k = b.species.toLowerCase();
+      const k = (b.species || '').toLowerCase();
+      if (!k) return;
       const s = b.score || 1;
       if (!best[k] || s > best[k]) best[k] = s;
     });
@@ -1945,29 +1977,97 @@ const FINDER_SCALE = [
   { n: 10, color: '#f5f5f0', label: 'White' }
 ];
 
-// Cached for a minute so the filter/sort re-renders don't refetch everyone.
+// ── SHARED FAMILY-WIDE BIRD CACHE ──────────────────────────────────────────
+// Every family-wide view (Board stats, Activity, Near You, Family, finder
+// colors, admin export) used to run its OWN sweep of every member's birds
+// subcollection. Six views × everyone's whole list adds up fast: Firestore
+// bills per document read, and the free tier is 50k/day. With 9 people and a
+// few hundred species each, a handful of tab switches was enough to burn
+// through a meaningful slice of the daily quota — and it only gets worse as
+// the year fills up.
+//
+// So: one sweep, cached here, shared by all of them. The reads also run in
+// parallel now instead of one member at a time, which makes every one of
+// those pages noticeably faster to load.
+//
+// Any write invalidates the cache (see invalidateBirdCache), so you never see
+// stale data after logging, editing, or deleting a bird.
+let birdSweepCache = null;          // { byUser: { key: [bird, …] }, at: ms }
+const BIRD_CACHE_TTL = 120000;      // 2 minutes
+
+async function loadAllBirds(force) {
+  if (!force && birdSweepCache && Date.now() - birdSweepCache.at < BIRD_CACHE_TTL) {
+    return birdSweepCache.byUser;
+  }
+  await loadAllUsers();
+  const keys = Object.keys(allUsersCache).filter(k => k !== '__admin__');
+
+  // Parallel, not sequential — these are independent reads.
+  const snaps = await Promise.all(
+    keys.map(k => getDocs(collection(db, 'users', k, 'birds')))
+  );
+
+  const byUser = {};
+  keys.forEach((k, i) => {
+    byUser[k] = snaps[i].docs.map(d => ({ id: d.id, ...d.data() }));
+  });
+
+  birdSweepCache = { byUser, at: Date.now() };
+  rebuildSpeciesFinders(byUser);
+  return byUser;
+}
+
+// Recomputes the family-wide "who has this species" tally that drives the
+// color tiers, the legend, and the 👥 roster modal.
+function rebuildSpeciesFinders(byUser) {
+  const finders = {};
+  for (const [key, birds] of Object.entries(byUser)) {
+    const u = allUsersCache[key] || {};
+    const best = {}; // this person's best score per species
+    birds.forEach(b => {
+      const sp = (b.species || '').toLowerCase();
+      if (!sp) return;
+      const s = b.score || (b.detection === 'seen' ? 2 : 1);
+      if (!best[sp] || s > best[sp]) best[sp] = s;
+    });
+    Object.entries(best).forEach(([sp, score]) => {
+      (finders[sp] = finders[sp] || []).push({ key, name: u.display || key, score });
+    });
+  }
+  speciesFinders = finders;
+  speciesFinderCountsAt = Date.now();
+}
+
+// Call after ANY write to a birds subcollection so the next family-wide view
+// re-reads instead of showing a stale sweep.
+function invalidateBirdCache() {
+  birdSweepCache = null;
+  speciesFinderCountsAt = 0;
+}
+window.invalidateBirdCache = invalidateBirdCache;
+
+// Convenience: everyone's sightings flattened into one list, each tagged with
+// who logged it. Used by Activity and Near You.
+async function loadFlatSightings(force) {
+  const byUser = await loadAllBirds(force);
+  const out = [];
+  for (const [key, birds] of Object.entries(byUser)) {
+    const u = allUsersCache[key] || {};
+    birds.forEach(b => out.push({
+      key,
+      display: u.display || key,
+      realName: u.realName || '',
+      ...b
+    }));
+  }
+  return out;
+}
+
+// Now just a thin wrapper: loadAllBirds() rebuilds the tally as a side effect
+// of the shared sweep, so this no longer does any reading of its own.
 async function loadSpeciesFinderCounts(force) {
-  if (!force && speciesFinderCountsAt && Date.now() - speciesFinderCountsAt < 60000) return;
   try {
-    await loadAllUsers();
-    const finders = {};
-    for (const [key, u] of Object.entries(allUsersCache)) {
-      if (key === '__admin__') continue;
-      const snap = await getDocs(collection(db, 'users', key, 'birds'));
-      const best = {}; // one entry per species, keeping this person's best score
-      snap.docs.forEach(d => {
-        const b = d.data();
-        const sp = (b.species || '').toLowerCase();
-        if (!sp) return;
-        const s = b.score || (b.detection === 'seen' ? 2 : 1);
-        if (!best[sp] || s > best[sp]) best[sp] = s;
-      });
-      Object.entries(best).forEach(([sp, score]) => {
-        (finders[sp] = finders[sp] || []).push({ key, name: u.display || key, score });
-      });
-    }
-    speciesFinders = finders;
-    speciesFinderCountsAt = Date.now();
+    await loadAllBirds(force);
   } catch(e) { console.error(e); }
 }
 
@@ -2751,43 +2851,22 @@ async function renderActivity() {
   activityFinderFilter = null;
   document.getElementById('activity-search').value = '';
 
-  await loadAllUsers();
+  // Served from the shared sweep — loadAllBirds() also refreshes the
+  // family-wide finder tally that drives the color tiers.
+  const flat = await loadFlatSightings();
 
-  // One sweep feeds both the feed and the family-wide finder tally, so the
-  // Activity tab doesn't re-read every list a second time.
-  const items = [];
-  const finders = {};
-  for (const [key, u] of Object.entries(allUsersCache)) {
-    if (key === '__admin__') continue;
-    const snap = await getDocs(collection(db, 'users', key, 'birds'));
-    const best = {}; // this person's best score per species
-    snap.docs.forEach(d => {
-      const b = d.data();
-      items.push({
-        key,
-        display: u.display || key,
-        realName: u.realName || '',
-        species: b.species,
-        location: b.location,
-        note: b.note,
-        detection: b.detection || (b.score === 2 ? 'seen' : 'heard'),
-        addedAt: b.addedAt,
-        updatedAt: b.updatedAt,
-        date: b.date
-      });
-      const sp = (b.species || '').toLowerCase();
-      if (!sp) return;
-      const s = b.score || (b.detection === 'seen' ? 2 : 1);
-      if (!best[sp] || s > best[sp]) best[sp] = s;
-    });
-    Object.entries(best).forEach(([sp, score]) => {
-      (finders[sp] = finders[sp] || []).push({ key, name: u.display || key, score });
-    });
-  }
-  speciesFinders = finders;
-  speciesFinderCountsAt = Date.now();
-
-  activityItems = items;
+  activityItems = flat.map(b => ({
+    key: b.key,
+    display: b.display,
+    realName: b.realName,
+    species: b.species,
+    location: b.location,
+    note: b.note,
+    detection: b.detection || (b.score === 2 ? 'seen' : 'heard'),
+    addedAt: b.addedAt,
+    updatedAt: b.updatedAt,
+    date: b.date
+  }));
   renderActivityCards();
 }
 
@@ -2888,44 +2967,31 @@ async function renderNearby() {
   const grid = document.getElementById('nearby-grid');
   grid.innerHTML = '<div class="empty-state">Loading sightings…</div>';
 
-  await loadAllUsers();
+  // Served from the shared sweep — loadAllBirds() also refreshes the
+  // family-wide finder tally that drives the color tiers.
+  const flat = await loadFlatSightings();
 
-  // One sweep over everyone's list — also refreshes the family-wide finder
-  // tally, same as the Activity tab does, so the color tiers are current.
   const items = [];
-  const finders = {};
   const mine = new Set();
 
-  for (const [key, u] of Object.entries(allUsersCache)) {
-    if (key === '__admin__') continue;
-    const snap = await getDocs(collection(db, 'users', key, 'birds'));
-    const best = {};
-    snap.docs.forEach(d => {
-      const b = d.data();
-      const sp = (b.species || '').toLowerCase();
-      if (!sp) return;
-      const score = b.score || (b.detection === 'seen' ? 2 : 1);
-      if (!best[sp] || score > best[sp]) best[sp] = score;
-      if (key === currentUser) mine.add(sp);
-      // Skip anything without coordinates — it can't be placed on a radius.
-      if (typeof b.lat !== 'number' || typeof b.lng !== 'number') return;
-      items.push({
-        species: b.species,
-        location: b.location || '',
-        date: b.date || '',
-        detection: b.detection || (score === 2 ? 'seen' : 'heard'),
-        score,
-        lat: b.lat,
-        lng: b.lng
-      });
+  flat.forEach(b => {
+    const sp = (b.species || '').toLowerCase();
+    if (!sp) return;
+    const score = b.score || (b.detection === 'seen' ? 2 : 1);
+    if (b.key === currentUser) mine.add(sp);
+    // Skip anything without coordinates — it can't be placed on a radius.
+    if (typeof b.lat !== 'number' || typeof b.lng !== 'number') return;
+    items.push({
+      species: b.species,
+      location: b.location || '',
+      date: b.date || '',
+      detection: b.detection || (score === 2 ? 'seen' : 'heard'),
+      score,
+      lat: b.lat,
+      lng: b.lng
     });
-    Object.entries(best).forEach(([sp, score]) => {
-      (finders[sp] = finders[sp] || []).push({ key, name: u.display || key, score });
-    });
-  }
+  });
 
-  speciesFinders = finders;
-  speciesFinderCountsAt = Date.now();
   nearbySightings = items;
   myNearbySpecies = mine;
 
@@ -3092,7 +3158,7 @@ window.nearbyUseMyLocation = function() {
 
 // ── PROFILES ───────────────────────────────────────────────────────────────
 async function renderProfiles() {
-  await loadAllUsers();
+  const byUser = await loadAllBirds();
   function daysAgo(dateStr) {
     if (!dateStr) return 'No birds logged yet';
     const diff = Date.now() - new Date(dateStr + 'T12:00:00').getTime();
@@ -3102,13 +3168,13 @@ async function renderProfiles() {
     return `Last bird: ${days} days ago`;
   }
   const ranked = [];
-  for (const [key, u] of Object.entries(allUsersCache)) {
-    const snap = await getDocs(collection(db, 'users', key, 'birds'));
-    const birds = snap.docs.map(d => d.data());
+  for (const [key, birds] of Object.entries(byUser)) {
+    const u = allUsersCache[key] || {};
     // Best score per species
     const best = {};
     birds.forEach(b => {
-      const k = b.species.toLowerCase();
+      const k = (b.species || '').toLowerCase();
+      if (!k) return;
       const s = b.score || 1;
       if (!best[k] || s > best[k]) best[k] = s;
     });
