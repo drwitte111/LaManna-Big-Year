@@ -493,6 +493,10 @@
     border-bottom: 1px solid rgba(200,149,42,0.2); background: rgba(200,149,42,0.08);
   }
 
+  /* --- 4. Birds Near You card lines --- */
+  .bird-distance { font-size: 0.75rem; color: var(--pale-gold); font-weight: 600; }
+  .bird-have { font-size: 0.7rem; color: #b8d4b0; font-style: italic; margin-top: 0.15rem; }
+
   /* --- 2. Dates and timestamps in full cream --- */
   .bird-date,
   .msg-time,
@@ -671,6 +675,58 @@
     </div>
     <div class="finder-legend" id="activity-finder-legend"></div>
     <div class="message-list" id="activity-list"><div class="empty-state">Loading…</div></div>
+  </div>
+  <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
+</div>
+
+<!-- BIRDS NEAR YOU -->
+<div id="page-nearby" class="page">
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">Birds Near You</div>
+      <div class="page-subtitle">What the family has found close to where you are</div>
+    </div>
+
+    <div class="add-bird-form" style="margin-bottom:1.25rem;">
+      <div class="label-row">
+        <label class="form-label" style="margin-bottom:0;">Search around</label>
+        <button type="button" class="btn-geo" id="btn-near-geo" onclick="nearbyUseMyLocation()">📍 Use my location</button>
+      </div>
+      <div style="position:relative;">
+        <input id="near-city" class="form-input" type="text" placeholder="Type a city, e.g. Stow, OH" autocomplete="off" oninput="filterNearCities()" onkeydown="nearCityKeydown(event)">
+        <div id="near-city-suggestions" class="suggestions-dropdown"></div>
+      </div>
+      <div id="near-status" class="geo-status"></div>
+
+      <div style="display:flex;gap:0.5rem;margin-top:0.75rem;flex-wrap:wrap;">
+        <div style="flex:1;min-width:120px;">
+          <label class="form-label">Radius</label>
+          <select id="near-radius" class="form-input" onchange="renderNearbyCards()">
+            <option value="5">Within 5 miles</option>
+            <option value="10" selected>Within 10 miles</option>
+            <option value="25">Within 25 miles</option>
+            <option value="50">Within 50 miles</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:120px;">
+          <label class="form-label">Sort</label>
+          <select id="near-sort" class="form-input" onchange="renderNearbyCards()">
+            <option value="distance">Closest first</option>
+            <option value="date">Most recent first</option>
+            <option value="rarest">Rarest first</option>
+            <option value="name">Name (A-Z)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="detection-toggle" style="margin-top:0.75rem;">
+        <button type="button" class="detection-btn active" id="nf-all" onclick="window.setNearbyMineFilter('all')">All birds</button>
+        <button type="button" class="detection-btn" id="nf-new" onclick="window.setNearbyMineFilter('new')">Only ones I need</button>
+      </div>
+    </div>
+
+    <div class="finder-legend" id="nearby-finder-legend"></div>
+    <div class="birds-grid" id="nearby-grid"><div class="empty-state">Set a location above to see what's been found nearby.</div></div>
   </div>
   <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
 </div>
@@ -944,6 +1000,7 @@ const NAV_ITEMS = [
   { page: 'home',      label: 'Board' },
   { page: 'birds',     label: 'My Birds' },
   { page: 'activity',  label: 'Activity' },
+  { page: 'nearby',    label: 'Near You' },
   { page: 'shared',    label: 'Shared' },
   { page: 'profiles',  label: 'Family' },
   { page: 'compare',   label: 'Compare Profiles' },
@@ -1190,6 +1247,7 @@ window.showPage = function(name) {
   if (name === 'home') renderHome();
   if (name === 'birds') renderBirdsPage(currentUser, true);
   if (name === 'activity') renderActivity();
+  if (name === 'nearby') renderNearby();
   if (name === 'shared') renderSharedPage();
   if (name === 'profiles') renderProfiles();
   if (name === 'compare') renderComparePage();
@@ -2808,6 +2866,230 @@ window.renderActivityCards = function() {
 }
 
 
+// ── BIRDS NEAR YOU ─────────────────────────────────────────────────────────
+// Shows every species the family has logged within a radius of a chosen
+// origin (your GPS fix, or a city you type). One card per SPECIES, not per
+// sighting: the nearest sighting of that species is the one whose score,
+// date, location and distance get shown, with a "+N more nearby" note when
+// there are others. Who found it is deliberately omitted — the color tier
+// already encodes how many people have it, and the 👥 badge opens the roster.
+//
+// Only entries that have coordinates can appear here. Everything logged
+// through the city autocomplete has them; anything free-typed before that
+// existed may not, which is what the admin "Re-geocode all" tool is for.
+
+let nearbyOrigin = null;      // { lat, lng, label }
+let nearbySightings = [];     // flat list of every coordinate-bearing sighting
+let nearbyMineFilter = 'all'; // 'all' | 'new'
+let nearbyFinderFilter = null;
+let myNearbySpecies = new Set();
+
+async function renderNearby() {
+  const grid = document.getElementById('nearby-grid');
+  grid.innerHTML = '<div class="empty-state">Loading sightings…</div>';
+
+  await loadAllUsers();
+
+  // One sweep over everyone's list — also refreshes the family-wide finder
+  // tally, same as the Activity tab does, so the color tiers are current.
+  const items = [];
+  const finders = {};
+  const mine = new Set();
+
+  for (const [key, u] of Object.entries(allUsersCache)) {
+    if (key === '__admin__') continue;
+    const snap = await getDocs(collection(db, 'users', key, 'birds'));
+    const best = {};
+    snap.docs.forEach(d => {
+      const b = d.data();
+      const sp = (b.species || '').toLowerCase();
+      if (!sp) return;
+      const score = b.score || (b.detection === 'seen' ? 2 : 1);
+      if (!best[sp] || score > best[sp]) best[sp] = score;
+      if (key === currentUser) mine.add(sp);
+      // Skip anything without coordinates — it can't be placed on a radius.
+      if (typeof b.lat !== 'number' || typeof b.lng !== 'number') return;
+      items.push({
+        species: b.species,
+        location: b.location || '',
+        date: b.date || '',
+        detection: b.detection || (score === 2 ? 'seen' : 'heard'),
+        score,
+        lat: b.lat,
+        lng: b.lng
+      });
+    });
+    Object.entries(best).forEach(([sp, score]) => {
+      (finders[sp] = finders[sp] || []).push({ key, name: u.display || key, score });
+    });
+  }
+
+  speciesFinders = finders;
+  speciesFinderCountsAt = Date.now();
+  nearbySightings = items;
+  myNearbySpecies = mine;
+
+  // Coming back to the tab keeps whatever origin you last set.
+  renderNearbyCards();
+}
+
+window.setNearbyMineFilter = function(mode) {
+  nearbyMineFilter = mode;
+  document.getElementById('nf-all').classList.toggle('active', mode === 'all');
+  document.getElementById('nf-new').classList.toggle('active', mode === 'new');
+  renderNearbyCards();
+}
+
+window.setNearbyFinderFilter = function(tier) {
+  nearbyFinderFilter = (nearbyFinderFilter === tier) ? null : tier;
+  renderNearbyCards();
+}
+
+function setNearStatus(msg, isError) {
+  const el = document.getElementById('near-status');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.classList.toggle('error', !!isError);
+}
+
+window.renderNearbyCards = function() {
+  const grid = document.getElementById('nearby-grid');
+  if (!grid) return;
+
+  if (!nearbyOrigin) {
+    document.getElementById('nearby-finder-legend').innerHTML = '';
+    grid.innerHTML = '<div class="empty-state">Tap "Use my location" or type a city above.</div>';
+    return;
+  }
+
+  const radius = parseFloat(document.getElementById('near-radius').value) || 10;
+  const sortBy = document.getElementById('near-sort').value;
+
+  // Collapse sightings to one entry per species, keeping the closest one as
+  // the representative and tracking how many others fell inside the radius.
+  const bySpecies = {};
+  nearbySightings.forEach(it => {
+    const d = haversineMiles(nearbyOrigin.lat, nearbyOrigin.lng, it.lat, it.lng);
+    if (d > radius) return;
+    const k = it.species.toLowerCase();
+    const cur = bySpecies[k];
+    if (!cur) {
+      bySpecies[k] = { ...it, distance: d, extra: 0, latestDate: it.date };
+    } else {
+      cur.extra++;
+      if (it.date > (cur.latestDate || '')) cur.latestDate = it.date;
+      if (d < cur.distance) {
+        const extra = cur.extra, latest = cur.latestDate;
+        bySpecies[k] = { ...it, distance: d, extra, latestDate: latest };
+      }
+    }
+  });
+
+  let list = Object.values(bySpecies);
+
+  // Legend tallies come from everything in range, so the chips don't shuffle
+  // as you flip the "ones I need" filter.
+  const tierCounts = {};
+  list.forEach(it => {
+    const t = finderTier(finderCount(it.species));
+    if (t) tierCounts[t] = (tierCounts[t] || 0) + 1;
+  });
+  renderFinderLegend('nearby-finder-legend', tierCounts, nearbyFinderFilter, 'setNearbyFinderFilter', 'species');
+
+  const totalInRange = list.length;
+  if (nearbyMineFilter === 'new') {
+    list = list.filter(it => !myNearbySpecies.has(it.species.toLowerCase()));
+  }
+  if (nearbyFinderFilter) {
+    list = list.filter(it => finderTier(finderCount(it.species)) === nearbyFinderFilter);
+  }
+
+  list.sort((a, b) => {
+    if (sortBy === 'name') return a.species.localeCompare(b.species);
+    if (sortBy === 'date') return (b.latestDate || '').localeCompare(a.latestDate || '');
+    if (sortBy === 'rarest') {
+      const fa = finderCount(a.species), fb = finderCount(b.species);
+      if (fa !== fb) return fa - fb;
+      return a.distance - b.distance;
+    }
+    return a.distance - b.distance;
+  });
+
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty-state">${
+      totalInRange
+        ? 'Nothing left after filtering — you already have every bird found in this area.'
+        : `No sightings logged within ${radius} miles of ${esc(nearbyOrigin.label)}.`
+    }</div>`;
+    return;
+  }
+
+  grid.innerHTML = list.map(it => {
+    const scoreLabel = it.detection === 'seen' ? '👁 Seen · 2pts' : '👂 Heard · 1pt';
+    const scoreCls = it.detection === 'seen' ? 'seen' : 'heard';
+    const count = finderCount(it.species);
+    const tier = finderTier(count);
+    const iHaveIt = myNearbySpecies.has(it.species.toLowerCase());
+    const spArg = esc(it.species).replace(/'/g, "\\'");
+    const finderBadge = count
+      ? `<button type="button" class="bird-finders" onclick="event.stopPropagation(); window.showFinders('${spArg}')" title="Click to see who found this">👥 ${count}</button>` : '';
+    return `
+      <div class="bird-card${tier ? ` tier-f${tier}` : ''}" style="cursor:pointer;" onclick="window.showBirdImage('${spArg}')" title="Click for a photo">
+        <div class="bird-name">${birdEmoji(it.species)} ${esc(it.species)} <span class="bird-score ${scoreCls}">${scoreLabel}</span>${finderBadge}</div>
+        <div class="bird-distance">${it.distance < 0.1 ? 'right here' : `${it.distance.toFixed(1)} mi away`}${it.extra ? ` · ${it.extra} more sighting${it.extra === 1 ? '' : 's'} nearby` : ''}</div>
+        ${it.location ? `<div class="bird-location">📍 ${esc(it.location)}</div>` : ''}
+        <div class="bird-date">${it.date || ''}</div>
+        ${iHaveIt ? '<div class="bird-have">✓ already on your list</div>' : ''}
+      </div>`;
+  }).join('');
+}
+
+// ── Origin pickers ─────────────────────────────────────────────────────────
+
+function setNearbyOrigin(lat, lng, label, statusMsg) {
+  nearbyOrigin = { lat, lng, label };
+  document.getElementById('near-city').value = label;
+  setNearStatus(statusMsg || `Showing birds around ${label}.`);
+  renderNearbyCards();
+}
+window.setNearbyOrigin = setNearbyOrigin;
+
+window.nearbyUseMyLocation = function() {
+  const btn = document.getElementById('btn-near-geo');
+  if (!navigator.geolocation) { setNearStatus('This browser does not support location.', true); return; }
+
+  btn.disabled = true; btn.textContent = '📍 Locating…';
+  setNearStatus('Waiting for location…');
+  const restore = () => { btn.disabled = false; btn.textContent = '📍 Use my location'; };
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      restore();
+      const { latitude, longitude } = pos.coords;
+      // Label it with the nearest known city purely for display — the radius
+      // is measured from the real GPS fix, not from that city's center.
+      const near = CITY_DATA.length ? nearestCities(latitude, longitude, 1) : [];
+      const label = near.length ? `${near[0][1][0]}, ${near[0][1][1]}` : 'your location';
+      nearbyOrigin = { lat: latitude, lng: longitude, label };
+      document.getElementById('near-city').value = label;
+      setNearStatus(`Showing birds around your current location (near ${label}).`);
+      renderNearbyCards();
+    },
+    err => {
+      restore();
+      if (err.code === err.PERMISSION_DENIED) {
+        setNearStatus('Location blocked. Re-enable it for this site in your browser settings, or type a city.', true);
+      } else if (err.code === err.TIMEOUT) {
+        setNearStatus('Location timed out — tap to try again, or type a city.', true);
+      } else {
+        setNearStatus('Could not get a fix — type a city instead.', true);
+      }
+    },
+    { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+  );
+}
+
+
 // ── PROFILES ───────────────────────────────────────────────────────────────
 async function renderProfiles() {
   await loadAllUsers();
@@ -3396,10 +3678,69 @@ window.cityKeydown = function(e) {
   }
 }
 
+
+// ── CITY AUTOCOMPLETE FOR "BIRDS NEAR YOU" ──────────────────────────────────
+// Same matching as filterCities(), but it targets the Near You origin field
+// and sets the map origin instead of a bird's location.
+let nearCityIndex = -1;
+
+window.filterNearCities = function() {
+  const val = document.getElementById('near-city').value.trim().toLowerCase();
+  const box = document.getElementById('near-city-suggestions');
+  nearCityIndex = -1;
+  if (!val || val.length < 2) { box.classList.remove('open'); box.innerHTML = ''; return; }
+
+  const matches = [];
+  for (let i = 0; i < CITY_DATA.length && matches.length < 10; i++) {
+    const [city, state] = CITY_DATA[i];
+    const cityLower = city.toLowerCase();
+    const label = cityLower + ', ' + state.toLowerCase();
+    if (cityLower.startsWith(val) || label.startsWith(val)) matches.push(CITY_DATA[i]);
+  }
+  if (!matches.length) { box.classList.remove('open'); box.innerHTML = ''; return; }
+
+  box.innerHTML = matches.map(([city, state, lat, lng]) =>
+    `<div class="suggestion-item" onmousedown="selectNearCity('${city.replace(/'/g,"\\'")}','${state}',${lat},${lng})">${city}, ${state}</div>`
+  ).join('');
+  box.classList.add('open');
+}
+
+window.selectNearCity = function(city, state, lat, lng) {
+  const box = document.getElementById('near-city-suggestions');
+  box.classList.remove('open');
+  box.innerHTML = '';
+  nearCityIndex = -1;
+  window.setNearbyOrigin(lat, lng, `${city}, ${state}`);
+}
+
+window.nearCityKeydown = function(e) {
+  const box = document.getElementById('near-city-suggestions');
+  const items = box.querySelectorAll('.suggestion-item');
+  if (!items.length) return;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    nearCityIndex = Math.min(nearCityIndex + 1, items.length - 1);
+    items.forEach((el, i) => el.classList.toggle('active', i === nearCityIndex));
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    nearCityIndex = Math.max(nearCityIndex - 1, -1);
+    items.forEach((el, i) => el.classList.toggle('active', i === nearCityIndex));
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    items[nearCityIndex >= 0 ? nearCityIndex : 0].dispatchEvent(new MouseEvent('mousedown'));
+  } else if (e.key === 'Escape') {
+    box.classList.remove('open');
+  }
+}
+
 document.addEventListener('click', e => {
   if (!e.target.closest('#bird-location') && !e.target.closest('#city-suggestions')) {
     const box = document.getElementById('city-suggestions');
     if (box) box.classList.remove('open');
+  }
+  if (!e.target.closest('#near-city') && !e.target.closest('#near-city-suggestions')) {
+    const nbox = document.getElementById('near-city-suggestions');
+    if (nbox) { nbox.classList.remove('open'); nbox.innerHTML = ''; }
   }
   // Close any open admin city suggestion dropdowns
   if (!e.target.closest('[id^="abe-location-"]') && !e.target.closest('[id^="abe-city-suggestions-"]')) {
