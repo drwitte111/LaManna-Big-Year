@@ -518,6 +518,17 @@
   .bird-distance { font-size: 0.75rem; color: var(--pale-gold); font-weight: 600; }
   .bird-have { font-size: 0.7rem; color: #b8d4b0; font-style: italic; margin-top: 0.15rem; }
 
+  /* --- 5. Activity "load more" --- */
+  .activity-more { text-align: center; padding: 0.75rem 0 0.25rem; }
+  .btn-load-more {
+    background: rgba(200,149,42,0.15); border: 1px solid rgba(200,149,42,0.45);
+    border-radius: var(--radius); padding: 0.55rem 1.4rem; color: var(--gold);
+    font-family: 'Source Sans 3', sans-serif; font-size: 0.85rem; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-load-more:hover { background: rgba(200,149,42,0.28); }
+  .activity-more-note { font-size: 0.7rem; color: rgba(245,237,214,0.5); margin-top: 0.4rem; font-style: italic; }
+
   /* --- 2. Dates and timestamps in full cream --- */
   .bird-date,
   .msg-time,
@@ -2198,7 +2209,7 @@ function onBirdDataChanged() {
   if (!active) return;
   switch (active.id) {
     case 'page-home':     renderHomeStats(); break;
-    case 'page-activity': rebuildActivityItems(); renderActivityCards(); break;
+    case 'page-activity': rebuildActivityItems(); renderActivityCards(true); break;
     case 'page-nearby':   rebuildNearbySightings(); renderNearbyCards(); break;
     case 'page-profiles': renderProfiles(); break;
   }
@@ -3011,8 +3022,26 @@ window.dismissShare = async function(shareId) {
 let activityItems = [];
 let activityFinderFilter = null;
 
+// The feed holds every sighting the family has ever logged, but rendering all
+// of them builds hundreds of DOM cards at once, which is what makes the tab
+// feel sluggish on a phone. So the first paint shows the last two weeks and
+// everything older sits behind a "Load 20 more" button.
+//
+// This is purely about render weight — the data is already in memory either
+// way, so it doesn't change how much gets read from Firestore.
+const ACTIVITY_WINDOW_DAYS = 14;
+const ACTIVITY_PAGE_SIZE = 20;
+let activityShowCount = 0;   // 0 = "just the recent window", >0 = explicit cap
+
+window.activityLoadMore = function() {
+  const shown = document.querySelectorAll('#activity-list .message-card').length;
+  activityShowCount = shown + ACTIVITY_PAGE_SIZE;
+  renderActivityCards(true);
+}
+
 window.setActivityFinderFilter = function(tier) {
   activityFinderFilter = (activityFinderFilter === tier) ? null : tier;
+  activityShowCount = 0;   // new filter, back to the recent window
   renderActivityCards();
 }
 
@@ -3051,9 +3080,13 @@ function activityTs(it) {
   return Math.max(added, updated);
 }
 
-window.renderActivityCards = function() {
+window.renderActivityCards = function(keepPaging) {
   const listEl = document.getElementById('activity-list');
   if (!listEl) return;
+  // A search edit or filter change resets back to the recent window. Passing
+  // keepPaging preserves how far you'd loaded — used by "Load 20 more" and by
+  // live snapshots, so a bird logged elsewhere doesn't collapse your scroll.
+  if (!keepPaging) activityShowCount = 0;
   const search = (document.getElementById('activity-search')?.value || '').toLowerCase();
   const finders = it => finderCount(it.species);
 
@@ -3092,6 +3125,21 @@ window.renderActivityCards = function() {
     return;
   }
 
+  // Decide how many cards to actually build. Default is everything from the
+  // last two weeks; if that window is empty (quiet stretch, or an old feed)
+  // fall back to one page so the tab is never blank.
+  const total = list.length;
+  let limit;
+  if (activityShowCount > 0) {
+    limit = activityShowCount;
+  } else {
+    const cutoff = Date.now() - ACTIVITY_WINDOW_DAYS * 86400000;
+    limit = list.filter(it => activityTs(it) >= cutoff).length;
+    if (limit < ACTIVITY_PAGE_SIZE) limit = Math.min(ACTIVITY_PAGE_SIZE, total);
+  }
+  const hidden = Math.max(0, total - limit);
+  list = list.slice(0, limit);
+
   listEl.innerHTML = list.map(it => {
     const scoreLabel = it.detection === 'seen' ? '👁 Seen · 2pts' : '👂 Heard · 1pt';
     const scoreCls = it.detection === 'seen' ? 'seen' : 'heard';
@@ -3115,7 +3163,13 @@ window.renderActivityCards = function() {
           ${it.note ? `<br><span class="bird-note">${esc(it.note)}</span>` : ''}
         </div>
       </div>`;
-  }).join('');
+  }).join('') + (hidden ? `
+    <div class="activity-more">
+      <button type="button" class="btn-load-more" onclick="window.activityLoadMore()">
+        Load ${Math.min(ACTIVITY_PAGE_SIZE, hidden)} more
+      </button>
+      <div class="activity-more-note">${hidden} older sighting${hidden === 1 ? '' : 's'} not shown</div>
+    </div>` : '');
 }
 
 
