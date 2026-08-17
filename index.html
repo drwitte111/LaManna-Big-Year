@@ -11,15 +11,36 @@
      home-screen icons don't get stuck on a stale cached version. -->
 <script>
 (async function checkForUpdate() {
+  // Asks the server ONLY for headers (HEAD = no response body), and keys off
+  // the ETag it returns. GitHub Pages derives the ETag from file content, so
+  // it changes by itself on every deploy — there's no version number to
+  // remember to bump. Costs a few hundred bytes instead of re-downloading the
+  // whole ~190KB page on every launch, which matters when the family opens
+  // this on cell service in the field.
+  //
+  // Falls back through Last-Modified, then to the original full-fetch
+  // fingerprint, so a CDN that strips those headers still gets update
+  // detection — just at the old cost.
+  const KEY = 'bigyear_page_fingerprint';
+
+  function apply(fingerprint) {
+    if (!fingerprint) return false;
+    const stored = localStorage.getItem(KEY);
+    localStorage.setItem(KEY, fingerprint);
+    if (stored && stored !== fingerprint) location.reload();
+    return true;
+  }
+
+  try {
+    const res = await fetch(window.location.pathname, { method: 'HEAD', cache: 'no-store' });
+    const tag = res.headers.get('etag') || res.headers.get('last-modified');
+    if (apply(tag)) return;
+  } catch(e) { /* HEAD unsupported or offline — fall through */ }
+
   try {
     const res = await fetch(window.location.pathname, { cache: 'no-store' });
     const text = await res.text();
-    const fingerprint = text.length + '|' + text.slice(0, 200) + text.slice(-200);
-    const stored = localStorage.getItem('bigyear_page_fingerprint');
-    localStorage.setItem('bigyear_page_fingerprint', fingerprint);
-    if (stored && stored !== fingerprint) {
-      location.reload();
-    }
+    apply(text.length + '|' + text.slice(0, 200) + text.slice(-200));
   } catch(e) { /* offline or blocked — just continue loading normally */ }
 })();
 </script>
@@ -1378,6 +1399,7 @@ window.handleSetPassword = async function() {
 
 window.handleLogout = function() {
   if (msgUnsubscribe) { msgUnsubscribe(); msgUnsubscribe = null; }
+  stopBirdListeners();
   currentUser = null;
   sessionStorage.removeItem('bigyear_user');
   showPage('login');
@@ -1775,15 +1797,62 @@ window.adminResetPw = async function(userKey) {
   } catch(e) { fb.style.color = '#e07060'; fb.textContent = 'Update failed.'; console.error(e); }
 }
 
+// Deleting an account erases someone's entire big year, so this does three
+// things the old version didn't: it makes you type the name to confirm, it
+// downloads a JSON snapshot of everything first, and it writes that same
+// snapshot into a `deleted_users` document in Firestore. Even if the download
+// is lost, the data is recoverable from the console. Nothing is removed until
+// the archive write succeeds.
 window.adminDeleteUser = async function(userKey, displayName) {
-  if (!confirm(`Delete ${displayName}'s account and all their birds? This cannot be undone.`)) return;
   const fb = document.getElementById('afb-' + userKey);
+  fb.style.color = '#e07060';
+
+  const typed = prompt(
+    `This deletes ${displayName}'s account and every bird they've logged.\n\n` +
+    `A backup will be downloaded and archived first.\n\n` +
+    `Type ${displayName} exactly to confirm:`
+  );
+  if (typed === null) return;
+  if (typed.trim() !== displayName) { fb.textContent = 'Name did not match — nothing was deleted.'; return; }
+
   try {
+    fb.style.color = 'var(--pale-gold)';
+    fb.textContent = 'Backing up…';
+
     const bSnap = await getDocs(collection(db, 'users', userKey, 'birds'));
+    const uSnap = await getDoc(doc(db, 'users', userKey));
+    const archive = {
+      userKey,
+      display: displayName,
+      deletedAt: new Date().toISOString(),
+      profile: uSnap.exists() ? uSnap.data() : null,
+      birds: bSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+    };
+
+    // 1. Archive inside Firestore — survives even if the file download fails.
+    await setDoc(doc(db, 'deleted_users', `${userKey}-${Date.now()}`), archive);
+
+    // 2. Hand the admin a copy on disk too.
+    try {
+      const blob = new Blob([JSON.stringify(archive, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bigyear-backup-${userKey}-${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch(e) { console.warn('Backup download failed, Firestore archive still written.', e); }
+
+    fb.textContent = `Backed up ${archive.birds.length} birds. Deleting…`;
+
     await Promise.all(bSnap.docs.map(d => deleteDoc(doc(db, 'users', userKey, 'birds', d.id))));
     await deleteDoc(doc(db, 'users', userKey));
     document.getElementById('acard-' + userKey).remove();
-  } catch(e) { fb.style.color = '#e07060'; fb.textContent = 'Delete failed.'; console.error(e); }
+  } catch(e) {
+    fb.style.color = '#e07060';
+    fb.textContent = 'Backup failed — nothing was deleted.';
+    console.error(e);
+  }
 }
 
 window.adminSaveDates = async function() {
@@ -1877,14 +1946,17 @@ function csvCell(val) {
 }
 
 // ── HOME ───────────────────────────────────────────────────────────────────
-async function renderHome() {
-  const byUser = await loadAllBirds();
+// Just the four stat cards. Split out from renderHome so a live snapshot can
+// refresh the numbers without tearing down and re-attaching the message
+// listener underneath them.
+function renderHomeStats() {
+  const el = document.getElementById('home-stats');
+  if (!el) return;
 
-  // Stats: count each user's points (served from the shared sweep)
   let myPoints = 0, totalPoints = 0;
   const memberCount = Object.keys(allUsersCache).length;
 
-  for (const [uKey, birds] of Object.entries(byUser)) {
+  for (const [uKey, birds] of Object.entries(birdsByUser)) {
     const best = {};
     birds.forEach(b => {
       const k = (b.species || '').toLowerCase();
@@ -1897,12 +1969,17 @@ async function renderHome() {
     totalPoints += pts;
   }
 
-  document.getElementById('home-stats').innerHTML = `
+  el.innerHTML = `
     <div class="stat-card"><div class="stat-num">${myPoints}</div><div class="stat-label">My points</div></div>
     <div class="stat-card"><div class="stat-num">${totalPoints}</div><div class="stat-label">Family total</div></div>
     <div class="stat-card"><div class="stat-num">${memberCount}</div><div class="stat-label">Members</div></div>
     <div class="stat-card"><div class="stat-num">2026-2027</div><div class="stat-label">Big Year</div></div>
   `;
+}
+
+async function renderHome() {
+  await loadAllBirds();
+  renderHomeStats();
 
   // Real-time messages
   if (msgUnsubscribe) msgUnsubscribe();
@@ -1992,29 +2069,103 @@ const FINDER_SCALE = [
 //
 // Any write invalidates the cache (see invalidateBirdCache), so you never see
 // stale data after logging, editing, or deleting a bird.
-let birdSweepCache = null;          // { byUser: { key: [bird, …] }, at: ms }
-const BIRD_CACHE_TTL = 120000;      // 2 minutes
+// ── LIVE FAMILY-WIDE BIRD DATA ─────────────────────────────────────────────
+// One onSnapshot listener per member's birds subcollection. Firestore bills
+// the initial attach (every doc once), then only streams documents that
+// actually CHANGE. So sitting in the app all day costs a handful of reads
+// instead of a full sweep on every tab switch — cheaper than polling, and
+// genuinely live: when someone logs a bird, it appears on everyone's screen
+// immediately with no refresh.
+//
+// birdsByUser is the single source of truth every family-wide view reads
+// from: Board stats, Activity, Near You, Family, and the finder color tiers.
+// The listeners keep it current; nothing polls.
+//
+// If listeners can't attach (offline at launch, rules error), loadAllBirds()
+// silently falls back to a one-time fetch, so every page still works.
+let birdsByUser = {};              // { userKey: [bird, …] }
+let birdListeners = {};            // { userKey: unsubscribe }
+let birdsReady = false;            // true once the first snapshot has landed
+let birdsFetchedAt = 0;            // fallback path only
 
-async function loadAllBirds(force) {
-  if (!force && birdSweepCache && Date.now() - birdSweepCache.at < BIRD_CACHE_TTL) {
-    return birdSweepCache.byUser;
-  }
+// Attaches a listener for every member who doesn't have one yet, and drops
+// listeners for members who no longer exist. Safe to call repeatedly.
+// Resolves once every listener has delivered its FIRST snapshot, so callers
+// can await real data instead of firing a duplicate fetch alongside it.
+async function syncBirdListeners() {
   await loadAllUsers();
   const keys = Object.keys(allUsersCache).filter(k => k !== '__admin__');
+  const pending = [];
 
-  // Parallel, not sequential — these are independent reads.
+  keys.forEach(key => {
+    if (birdListeners[key]) return;
+    let settle;
+    pending.push(new Promise(res => { settle = res; }));
+
+    birdListeners[key] = onSnapshot(
+      collection(db, 'users', key, 'birds'),
+      snap => {
+        birdsByUser[key] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        rebuildSpeciesFinders(birdsByUser);
+        if (settle) { settle(); settle = null; }   // first snapshot only
+        else onBirdDataChanged();                  // later ones re-render
+        birdsReady = true;
+      },
+      err => {
+        console.error('Bird listener failed for ' + key, err);
+        delete birdListeners[key];   // let the fallback fetch cover this member
+        if (settle) { settle(); settle = null; }
+      }
+    );
+  });
+
+  Object.keys(birdListeners).forEach(key => {
+    if (!keys.includes(key)) {
+      birdListeners[key]();
+      delete birdListeners[key];
+      delete birdsByUser[key];
+    }
+  });
+
+  if (pending.length) await Promise.all(pending);
+}
+
+function stopBirdListeners() {
+  Object.values(birdListeners).forEach(unsub => { try { unsub(); } catch(e) {} });
+  birdListeners = {};
+  birdsByUser = {};
+  birdsReady = false;
+  birdsFetchedAt = 0;
+}
+
+// Every family-wide view calls this. The FIRST call attaches the listeners and
+// waits for their opening snapshots — that's the only time it costs a full
+// read of everyone's list. After that it returns the live object instantly:
+// no network, no waiting, and the data is already current because the
+// listeners have been streaming changes in the background.
+async function loadAllBirds(force) {
+  if (birdsReady && !force) return birdsByUser;
+
+  try {
+    await syncBirdListeners();
+    if (birdsReady) return birdsByUser;
+  } catch(e) {
+    console.error('Could not attach bird listeners, falling back to fetch.', e);
+  }
+
+  // Fallback only: listeners blocked or offline at launch.
+  if (!force && birdsFetchedAt && Date.now() - birdsFetchedAt < 30000) return birdsByUser;
+  await loadAllUsers();
+  const keys = Object.keys(allUsersCache).filter(k => k !== '__admin__');
   const snaps = await Promise.all(
     keys.map(k => getDocs(collection(db, 'users', k, 'birds')))
   );
-
-  const byUser = {};
   keys.forEach((k, i) => {
-    byUser[k] = snaps[i].docs.map(d => ({ id: d.id, ...d.data() }));
+    birdsByUser[k] = snaps[i].docs.map(d => ({ id: d.id, ...d.data() }));
   });
-
-  birdSweepCache = { byUser, at: Date.now() };
-  rebuildSpeciesFinders(byUser);
-  return byUser;
+  birdsFetchedAt = Date.now();
+  rebuildSpeciesFinders(birdsByUser);
+  return birdsByUser;
 }
 
 // Recomputes the family-wide "who has this species" tally that drives the
@@ -2038,11 +2189,27 @@ function rebuildSpeciesFinders(byUser) {
   speciesFinderCountsAt = Date.now();
 }
 
-// Call after ANY write to a birds subcollection so the next family-wide view
-// re-reads instead of showing a stale sweep.
+// Re-renders whichever family-wide page is currently on screen. Called every
+// time a snapshot lands, so an entry logged on another phone shows up here
+// without anyone refreshing. Pages that aren't visible are skipped — they'll
+// read the fresh data from birdsByUser when you navigate to them.
+function onBirdDataChanged() {
+  const active = document.querySelector('.page.active');
+  if (!active) return;
+  switch (active.id) {
+    case 'page-home':     renderHomeStats(); break;
+    case 'page-activity': rebuildActivityItems(); renderActivityCards(); break;
+    case 'page-nearby':   rebuildNearbySightings(); renderNearbyCards(); break;
+    case 'page-profiles': renderProfiles(); break;
+  }
+}
+
+// Writes now update through the listener, so there's nothing to invalidate.
+// Kept as a no-op safety net for the fallback path and so the write wrappers
+// don't need to know which mode we're in.
 function invalidateBirdCache() {
-  birdSweepCache = null;
-  speciesFinderCountsAt = 0;
+  birdsFetchedAt = 0;
+  if (!birdsReady) speciesFinderCountsAt = 0;
 }
 window.invalidateBirdCache = invalidateBirdCache;
 
@@ -2050,6 +2217,10 @@ window.invalidateBirdCache = invalidateBirdCache;
 // who logged it. Used by Activity and Near You.
 async function loadFlatSightings(force) {
   const byUser = await loadAllBirds(force);
+  return flattenSightings(byUser);
+}
+
+function flattenSightings(byUser) {
   const out = [];
   for (const [key, birds] of Object.entries(byUser)) {
     const u = allUsersCache[key] || {};
@@ -2845,17 +3016,10 @@ window.setActivityFinderFilter = function(tier) {
   renderActivityCards();
 }
 
-async function renderActivity() {
-  const listEl = document.getElementById('activity-list');
-  listEl.innerHTML = '<div class="empty-state">Loading…</div>';
-  activityFinderFilter = null;
-  document.getElementById('activity-search').value = '';
-
-  // Served from the shared sweep — loadAllBirds() also refreshes the
-  // family-wide finder tally that drives the color tiers.
-  const flat = await loadFlatSightings();
-
-  activityItems = flat.map(b => ({
+// Rebuilt from the live bird data — called on first render and again every
+// time a snapshot lands while the Activity tab is open.
+function rebuildActivityItems() {
+  activityItems = flattenSightings(birdsByUser).map(b => ({
     key: b.key,
     display: b.display,
     realName: b.realName,
@@ -2867,6 +3031,16 @@ async function renderActivity() {
     updatedAt: b.updatedAt,
     date: b.date
   }));
+}
+
+async function renderActivity() {
+  const listEl = document.getElementById('activity-list');
+  listEl.innerHTML = '<div class="empty-state">Loading…</div>';
+  activityFinderFilter = null;
+  document.getElementById('activity-search').value = '';
+
+  await loadAllBirds();
+  rebuildActivityItems();
   renderActivityCards();
 }
 
@@ -2963,18 +3137,13 @@ let nearbyMineFilter = 'all'; // 'all' | 'new'
 let nearbyFinderFilter = null;
 let myNearbySpecies = new Set();
 
-async function renderNearby() {
-  const grid = document.getElementById('nearby-grid');
-  grid.innerHTML = '<div class="empty-state">Loading sightings…</div>';
-
-  // Served from the shared sweep — loadAllBirds() also refreshes the
-  // family-wide finder tally that drives the color tiers.
-  const flat = await loadFlatSightings();
-
+// Rebuilt from the live bird data — called on first render and again every
+// time a snapshot lands while the Near You tab is open.
+function rebuildNearbySightings() {
   const items = [];
   const mine = new Set();
 
-  flat.forEach(b => {
+  flattenSightings(birdsByUser).forEach(b => {
     const sp = (b.species || '').toLowerCase();
     if (!sp) return;
     const score = b.score || (b.detection === 'seen' ? 2 : 1);
@@ -2994,6 +3163,14 @@ async function renderNearby() {
 
   nearbySightings = items;
   myNearbySpecies = mine;
+}
+
+async function renderNearby() {
+  const grid = document.getElementById('nearby-grid');
+  grid.innerHTML = '<div class="empty-state">Loading sightings…</div>';
+
+  await loadAllBirds();
+  rebuildNearbySightings();
 
   // Coming back to the tab keeps whatever origin you last set.
   renderNearbyCards();
@@ -3159,6 +3336,7 @@ window.nearbyUseMyLocation = function() {
 // ── PROFILES ───────────────────────────────────────────────────────────────
 async function renderProfiles() {
   const byUser = await loadAllBirds();
+  // (re-read the live object each pass so snapshot refreshes pick up changes)
   function daysAgo(dateStr) {
     if (!dateStr) return 'No birds logged yet';
     const diff = Date.now() - new Date(dateStr + 'T12:00:00').getTime();
