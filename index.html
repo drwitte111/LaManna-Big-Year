@@ -141,7 +141,7 @@
     width: 32px; height: 32px; flex-shrink: 0;
     background: none; border: 1px solid rgba(200,149,42,0.4);
     border-radius: 50%; color: rgba(245,237,214,0.6);
-    cursor: pointer; padding: 0; transition: all 0.15s;
+    cursor: pointer; padding: 0; transition: all 0.15s; overflow: hidden;
   }
   .btn-account:hover { border-color: var(--gold); color: var(--gold); background: rgba(200,149,42,0.12); }
   .btn-account.active { border-color: var(--gold); color: var(--gold); }
@@ -252,15 +252,25 @@
   .lb-rank.silver { color: #aaa; }
   .lb-rank.bronze { color: #cd7f32; }
   /* Fills whichever circle it sits in, so every avatar size keeps working. */
-  .avatar-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
+  /* The photo is sized and offset purely in percentages of its circle, so the
+     same numbers frame it identically at 26px in the feed and 112px in the
+     picker. max-width:none stops any inherited image reset from shrinking it. */
+  .avatar-img { position: absolute; display: block; max-width: none; }
+  .avatar-img.legacy { position: static; width: 100%; height: 100%; object-fit: cover; }
+  .lb-avatar, .msg-avatar, .profile-avatar-lg, .profile-avatar-xl,
+  .profile-settings-avatar, .avatar-preview-circle { position: relative; overflow: hidden; }
   .btn-choose-avatar { margin-left: auto; align-self: center; background: rgba(245,237,214,0.05); border: 1px solid rgba(200,149,42,0.3); border-radius: var(--radius); padding: 0.5rem 0.9rem; min-height: 40px; color: var(--cream); font-family: 'Source Sans 3', sans-serif; font-size: 0.82rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
   .btn-choose-avatar:hover { background: rgba(200,149,42,0.15); border-color: var(--gold); }
   .avatar-preview { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem; min-height: 150px; margin-top: 1rem; }
-  .avatar-preview img { width: 112px; height: 112px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(200,149,42,0.5); }
-  /* touch-action:none so dragging the photo repositions it instead of
-     scrolling the modal on a phone. */
-  .avatar-preview img.draggable { cursor: grab; touch-action: none; user-select: none; -webkit-user-drag: none; }
-  .avatar-preview img.draggable:active { cursor: grabbing; }
+  /* Same square-circle geometry as every other avatar, just bigger — so what
+     you frame here is exactly what the feed and the nav icon show.
+     touch-action:none so dragging frames the photo instead of scrolling. */
+  .avatar-preview-circle { width: 112px; height: 112px; border-radius: 50%; border: 2px solid rgba(200,149,42,0.5); background: var(--sage); cursor: grab; touch-action: none; user-select: none; flex-shrink: 0; }
+  .avatar-preview-circle:active { cursor: grabbing; }
+  .avatar-preview-circle img { -webkit-user-drag: none; pointer-events: none; }
+  .avatar-zoom { display: flex; align-items: center; gap: 0.5rem; width: 100%; max-width: 230px; }
+  .avatar-zoom input[type=range] { flex: 1; accent-color: var(--gold); }
+  .avatar-zoom span { font-size: 0.7rem; color: rgba(245,237,214,0.35); }
   .avatar-adjust { display: flex; align-items: center; gap: 0.5rem; }
   .btn-recenter { background: none; border: 1px solid rgba(200,149,42,0.3); border-radius: var(--radius); padding: 0.25rem 0.6rem; color: rgba(245,237,214,0.6); font-family: 'Source Sans 3', sans-serif; font-size: 0.72rem; cursor: pointer; transition: all 0.15s; }
   .btn-recenter:hover { color: var(--gold); border-color: var(--gold); }
@@ -1213,10 +1223,26 @@ const NAV_ITEMS = [
   { page: 'compare',   label: 'Compare Profiles' },
 ];
 
+// Falls back to the generic person outline when there's no chosen bird, or
+// when the photo fails to load.
+const ACCOUNT_SVG = `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <circle cx="12" cy="8" r="3.6"></circle>
+  <path d="M4.6 20a7.4 7.4 0 0 1 14.8 0"></path>
+</svg>`;
+
+window.navAvatarFallback = function(img) {
+  const parent = img.parentElement;
+  if (parent) parent.innerHTML = ACCOUNT_SVG;
+};
+
 function renderNav(activePage) {
   const mount = document.getElementById('nav-mount');
   if (!mount) return;
-  const display = allUsersCache[currentUser]?.display || currentUser || '';
+  const me = allUsersCache[currentUser] || {};
+  const display = me.display || currentUser || '';
+  const accountIcon = me.avatarUrl
+    ? (f => `<img class="avatar-img${f.cls}" src="${esc(avatarSizedUrl(me.avatarUrl, 250))}" alt="" style="${f.style}" onerror="window.navAvatarFallback(this)">`)(avatarFrameStyle(me))
+    : ACCOUNT_SVG;
   const links = NAV_ITEMS.map(item => {
     const badge = '';
     return `<button class="nav-link${item.page === activePage ? ' active' : ''}" onclick="window.navAndCloseMenu('${item.page}')">${esc(item.label)}${badge}</button>`;
@@ -1228,11 +1254,8 @@ function renderNav(activePage) {
       <div class="nav-links" id="nav-links-list">${links}</div>
       <div class="nav-right">
         <span class="nav-user">${esc(display)}</span>
-        <button class="btn-account${activePage === 'myprofile' ? ' active' : ''}" onclick="showPage('myprofile')" title="My Profile" aria-label="My Profile">
-          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="8" r="3.6"></circle>
-            <path d="M4.6 20a7.4 7.4 0 0 1 14.8 0"></path>
-          </svg>
+        <button class="btn-account${activePage === 'myprofile' ? ' active' : ''}" onclick="showPage('myprofile')" title="${esc(me.avatarBird || 'My Profile')}" aria-label="My Profile">
+          ${accountIcon}
         </button>
         <button class="btn-logout" onclick="handleLogout()">Sign out</button>
       </div>
@@ -1307,13 +1330,41 @@ function initials(name) { return String(name||'?').slice(0,2).toUpperCase(); }
 
 // A user's chosen bird photo, falling back to their initials. The photo is
 // hotlinked from Wikimedia's CDN, so nothing is stored beyond the URL itself.
-// Where the photo sits inside the circle, as an object-position value. Stored
-// per user; validated on the way out so a malformed value can't reach the CSS.
-function avatarPosition(u) {
+// Framing is stored as three numbers: where the photo is panned to (0-100 on
+// each axis, 50 = centred), how far it's zoomed in, and the photo's aspect
+// ratio. Everything below is expressed as a percentage of the circle, which is
+// what makes the picker's 112px preview and a 26px feed avatar show the exact
+// same crop.
+function avatarFrame(u) {
   const m = String((u && u.avatarPos) || '').trim().match(/^(\d{1,3})% (\d{1,3})%$/);
-  if (!m) return '50% 50%';
-  const x = Number(m[1]), y = Number(m[2]);
-  return (x <= 100 && y <= 100) ? `${x}% ${y}%` : '50% 50%';
+  const x = m ? Number(m[1]) : 50;
+  const y = m ? Number(m[2]) : 50;
+  const zoom = Number((u && u.avatarZoom) || 1);
+  const aspect = Number((u && u.avatarAspect) || 0);
+  return {
+    x: (x >= 0 && x <= 100) ? x : 50,
+    y: (y >= 0 && y <= 100) ? y : 50,
+    zoom: (zoom >= 1 && zoom <= 4) ? zoom : 1,
+    aspect: (aspect > 0.05 && aspect < 20) ? aspect : 0,   // 0 = unknown
+  };
+}
+
+// Inline style placing the photo inside its circle. The circle is square, so
+// "cover" means the photo's SHORTER side matches it; zoom scales up from there
+// and the leftover on each axis is what panning moves through.
+function avatarFrameStyle(u) {
+  const f = avatarFrame(u);
+  // Aspect unknown (an avatar saved before framing existed): fall back to the
+  // browser's own cover crop rather than guess and distort the photo.
+  if (!f.aspect) return { cls: ' legacy', style: `object-position:${f.x}% ${f.y}%;` };
+
+  const w = f.aspect >= 1 ? 100 * f.zoom * f.aspect : 100 * f.zoom;
+  const h = f.aspect >= 1 ? 100 * f.zoom : 100 * f.zoom / f.aspect;
+  const overflowX = w - 100, overflowY = h - 100;
+  const left = -(overflowX * f.x / 100);
+  const top  = -(overflowY * f.y / 100);
+  const r = n => Math.round(n * 100) / 100;
+  return { cls: '', style: `width:${r(w)}%;height:${r(h)}%;left:${r(left)}%;top:${r(top)}%;` };
 }
 
 function avatarInner(userKey, display) {
@@ -1322,7 +1373,7 @@ function avatarInner(userKey, display) {
   // Re-snap on render as well as on save, so any avatar stored with a width
   // Wikimedia no longer serves heals itself the next time it is shown.
   return u.avatarUrl
-    ? `<img class="avatar-img" src="${esc(avatarSizedUrl(u.avatarUrl, 250))}" alt="${esc(name)}" title="${esc(u.avatarBird || name)}" loading="lazy" style="object-position:${avatarPosition(u)};" onerror="window.avatarFallback(this,'${esc(initials(name))}')">`
+    ? (f => `<img class="avatar-img${f.cls}" src="${esc(avatarSizedUrl(u.avatarUrl, 250))}" alt="${esc(name)}" title="${esc(u.avatarBird || name)}" loading="lazy" style="${f.style}" onerror="window.avatarFallback(this,'${esc(initials(name))}')">`)(avatarFrameStyle(u))
     : esc(initials(name));
 }
 
@@ -1678,13 +1729,16 @@ async function renderMyProfile() {
 // resolved once, here, and only its URL is stored — rendering an avatar never
 // calls Wikipedia, which would mean an API request per avatar per page view.
 let avatarPick = null; // { species, url }
-let avatarPos = { x: 50, y: 50 }; // framing within the circle, in percent
+let avatarPos = { x: 50, y: 50, zoom: 1.2, aspect: 0 }; // framing within the circle
 
 window.openAvatarPicker = function() {
   avatarPick = null;
   const current = allUsersCache[currentUser] || {};
-  const startPos = avatarPosition(current).match(/\d{1,3}/g) || ['50','50'];
-  avatarPos = { x: Number(startPos[0]), y: Number(startPos[1]) };
+  const f = avatarFrame(current);
+  // A little past "just covering" by default, so the photo has room to move on
+  // BOTH axes right away — at exactly cover, a wide photo is flush top and
+  // bottom and there is nothing above or below to drag into view.
+  avatarPos = { x: f.x, y: f.y, zoom: f.zoom > 1 ? f.zoom : 1.2, aspect: f.aspect };
   showModal(`
     <div class="modal-title">Choose your profile bird</div>
     <div class="modal-body">
@@ -1743,13 +1797,29 @@ window.previewAvatarBird = async function() {
     const url = avatarSizedUrl(result.img, 250);
     avatarPick = { species, url };
     box.innerHTML = `
-      <img id="avatar-preview-img" class="draggable" src="${esc(url)}" alt="${esc(species)}"
-           style="object-position:${avatarPos.x}% ${avatarPos.y}%;" draggable="false">
+      <div class="avatar-preview-circle" id="avatar-preview-circle">
+        <img id="avatar-preview-img" class="avatar-img" src="${esc(url)}" alt="${esc(species)}" draggable="false">
+      </div>
       <div class="avatar-preview-name">${esc(species)}</div>
-      <div class="avatar-adjust">
-        <span class="avatar-preview-hint" style="margin:0;">Drag the photo to frame it</span>
-        <button type="button" class="btn-recenter" onclick="window.recentreAvatar()">Centre</button>
-      </div>`;
+      <div class="avatar-zoom">
+        <span>Zoom</span>
+        <input type="range" id="avatar-zoom" min="1" max="3" step="0.05" value="${avatarPos.zoom}"
+               oninput="window.setAvatarZoom(this.value)">
+        <button type="button" class="btn-recenter" onclick="window.recentreAvatar()">Reset</button>
+      </div>
+      <div class="avatar-preview-hint" style="margin:0;">Drag the photo to frame it</div>`;
+
+    // The photo's own proportions decide how much room there is to pan, so read
+    // them off the loaded image before drawing the frame.
+    const img = document.getElementById('avatar-preview-img');
+    const applyOnce = () => {
+      if (!avatarPos.aspect && img.naturalWidth && img.naturalHeight) {
+        avatarPos.aspect = img.naturalWidth / img.naturalHeight;
+      }
+      applyAvatarFrame();
+    };
+    if (img.complete && img.naturalWidth) applyOnce();
+    else img.addEventListener('load', applyOnce, { once: true });
     bindAvatarDrag();
     if (document.getElementById('avatar-save-btn')) document.getElementById('avatar-save-btn').disabled = false;
   } else {
@@ -1757,44 +1827,77 @@ window.previewAvatarBird = async function() {
   }
 }
 
-// Dragging shifts which part of the photo the circle shows. Moving the photo
-// right reveals more of its left edge, so object-position moves the opposite
-// way to the pointer. A drag across the full circle covers the whole range.
-function bindAvatarDrag() {
+// Draws the current framing into the preview using the very same function the
+// feed and nav icon use, so the preview cannot drift from the real thing.
+function applyAvatarFrame() {
   const img = document.getElementById('avatar-preview-img');
   if (!img) return;
+  const f = avatarFrameStyle({
+    avatarPos: `${Math.round(avatarPos.x)}% ${Math.round(avatarPos.y)}%`,
+    avatarZoom: avatarPos.zoom, avatarAspect: avatarPos.aspect,
+  });
+  img.className = 'avatar-img' + f.cls;
+  img.style.cssText = f.style;
+}
+
+// How much of the photo hangs outside the circle, per axis, as a percentage of
+// the circle. This is the distance a drag has to work with — zero means that
+// axis has nothing hidden to reveal.
+function avatarOverflow() {
+  const a = avatarPos.aspect, z = avatarPos.zoom;
+  if (!a) return { x: 0, y: 0 };
+  const w = a >= 1 ? 100 * z * a : 100 * z;
+  const h = a >= 1 ? 100 * z : 100 * z / a;
+  return { x: Math.max(0, w - 100), y: Math.max(0, h - 100) };
+}
+
+// Dragging moves the photo; the visible window moves the other way, hence the
+// inverted sign. Movement is measured against each axis's own overflow so a
+// drag tracks the photo under your finger instead of racing ahead of it.
+function bindAvatarDrag() {
+  const circle = document.getElementById('avatar-preview-circle');
+  if (!circle) return;
   let startX = 0, startY = 0, originX = 50, originY = 50, dragging = false;
-  const size = img.getBoundingClientRect().width || 112;
+  const size = circle.getBoundingClientRect().width || 112;
   const clamp = v => Math.max(0, Math.min(100, v));
 
-  img.addEventListener('pointerdown', e => {
+  circle.addEventListener('pointerdown', e => {
     dragging = true;
     startX = e.clientX; startY = e.clientY;
     originX = avatarPos.x; originY = avatarPos.y;
-    img.setPointerCapture(e.pointerId);
+    circle.setPointerCapture(e.pointerId);
     e.preventDefault();
   });
 
-  img.addEventListener('pointermove', e => {
+  circle.addEventListener('pointermove', e => {
     if (!dragging) return;
-    avatarPos.x = clamp(originX - (e.clientX - startX) / size * 100);
-    avatarPos.y = clamp(originY - (e.clientY - startY) / size * 100);
-    img.style.objectPosition = `${Math.round(avatarPos.x)}% ${Math.round(avatarPos.y)}%`;
+    const over = avatarOverflow();
+    const dxPct = over.x ? (e.clientX - startX) / size * 100 / (over.x / 100) : 0;
+    const dyPct = over.y ? (e.clientY - startY) / size * 100 / (over.y / 100) : 0;
+    avatarPos.x = clamp(originX - dxPct);
+    avatarPos.y = clamp(originY - dyPct);
+    applyAvatarFrame();
   });
 
   const end = e => {
     if (!dragging) return;
     dragging = false;
-    try { img.releasePointerCapture(e.pointerId); } catch(err) { /* already released */ }
+    try { circle.releasePointerCapture(e.pointerId); } catch(err) { /* already released */ }
   };
-  img.addEventListener('pointerup', end);
-  img.addEventListener('pointercancel', end);
+  circle.addEventListener('pointerup', end);
+  circle.addEventListener('pointercancel', end);
+}
+
+window.setAvatarZoom = function(v) {
+  avatarPos.zoom = Math.max(1, Math.min(4, Number(v) || 1));
+  applyAvatarFrame();
 }
 
 window.recentreAvatar = function() {
-  avatarPos = { x: 50, y: 50 };
-  const img = document.getElementById('avatar-preview-img');
-  if (img) img.style.objectPosition = '50% 50%';
+  avatarPos.x = 50; avatarPos.y = 50; avatarPos.zoom = 1.2;
+  const slider = document.getElementById('avatar-zoom');
+  if (slider) slider.value = '1.2';
+  applyAvatarFrame();
 }
 
 window.saveAvatarBird = async function() {
@@ -1802,17 +1905,22 @@ window.saveAvatarBird = async function() {
   const btn = document.getElementById('avatar-save-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
   try {
-    const avatarPosValue = `${Math.round(avatarPos.x)}% ${Math.round(avatarPos.y)}%`;
+    const frame = {
+      avatarPos: `${Math.round(avatarPos.x)}% ${Math.round(avatarPos.y)}%`,
+      avatarZoom: Math.round(avatarPos.zoom * 100) / 100,
+      avatarAspect: Math.round(avatarPos.aspect * 1000) / 1000,
+    };
     await updateDoc(doc(db, 'users', currentUser), {
-      avatarBird: avatarPick.species, avatarUrl: avatarPick.url, avatarPos: avatarPosValue
+      avatarBird: avatarPick.species, avatarUrl: avatarPick.url, ...frame
     });
     invalidateUserCache();
     allUsersCache[currentUser] = {
       ...allUsersCache[currentUser],
-      avatarBird: avatarPick.species, avatarUrl: avatarPick.url, avatarPos: avatarPosValue
+      avatarBird: avatarPick.species, avatarUrl: avatarPick.url, ...frame
     };
     closeModal();
     renderMyProfile();
+    renderNav('myprofile');   // swap the account icon over to the new photo
   } catch(e) {
     console.error('saveAvatarBird', e);
     if (btn) { btn.disabled = false; btn.textContent = 'Use this photo'; }
@@ -1821,11 +1929,13 @@ window.saveAvatarBird = async function() {
 
 window.clearAvatarBird = async function() {
   try {
-    await updateDoc(doc(db, 'users', currentUser), { avatarBird: '', avatarUrl: '', avatarPos: '' });
+    const cleared = { avatarBird: '', avatarUrl: '', avatarPos: '', avatarZoom: 1, avatarAspect: 0 };
+    await updateDoc(doc(db, 'users', currentUser), cleared);
     invalidateUserCache();
-    allUsersCache[currentUser] = { ...allUsersCache[currentUser], avatarBird: '', avatarUrl: '', avatarPos: '' };
+    allUsersCache[currentUser] = { ...allUsersCache[currentUser], ...cleared };
     closeModal();
     renderMyProfile();
+    renderNav('myprofile');   // back to the generic person outline
   } catch(e) { console.error('clearAvatarBird', e); }
 }
 
