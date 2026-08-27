@@ -257,6 +257,13 @@
   .btn-choose-avatar:hover { background: rgba(200,149,42,0.15); border-color: var(--gold); }
   .avatar-preview { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem; min-height: 150px; margin-top: 1rem; }
   .avatar-preview img { width: 112px; height: 112px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(200,149,42,0.5); }
+  /* touch-action:none so dragging the photo repositions it instead of
+     scrolling the modal on a phone. */
+  .avatar-preview img.draggable { cursor: grab; touch-action: none; user-select: none; -webkit-user-drag: none; }
+  .avatar-preview img.draggable:active { cursor: grabbing; }
+  .avatar-adjust { display: flex; align-items: center; gap: 0.5rem; }
+  .btn-recenter { background: none; border: 1px solid rgba(200,149,42,0.3); border-radius: var(--radius); padding: 0.25rem 0.6rem; color: rgba(245,237,214,0.6); font-family: 'Source Sans 3', sans-serif; font-size: 0.72rem; cursor: pointer; transition: all 0.15s; }
+  .btn-recenter:hover { color: var(--gold); border-color: var(--gold); }
   .avatar-preview-name { font-size: 0.85rem; color: var(--pale-gold); }
   .avatar-preview-hint { font-size: 0.78rem; color: rgba(245,237,214,0.35); font-style: italic; text-align: center; }
   @media (max-width: 520px) { .btn-choose-avatar { margin-left: 0; width: 100%; } }
@@ -1300,13 +1307,22 @@ function initials(name) { return String(name||'?').slice(0,2).toUpperCase(); }
 
 // A user's chosen bird photo, falling back to their initials. The photo is
 // hotlinked from Wikimedia's CDN, so nothing is stored beyond the URL itself.
+// Where the photo sits inside the circle, as an object-position value. Stored
+// per user; validated on the way out so a malformed value can't reach the CSS.
+function avatarPosition(u) {
+  const m = String((u && u.avatarPos) || '').trim().match(/^(\d{1,3})% (\d{1,3})%$/);
+  if (!m) return '50% 50%';
+  const x = Number(m[1]), y = Number(m[2]);
+  return (x <= 100 && y <= 100) ? `${x}% ${y}%` : '50% 50%';
+}
+
 function avatarInner(userKey, display) {
   const u = allUsersCache[userKey] || {};
   const name = display || u.display || userKey;
   // Re-snap on render as well as on save, so any avatar stored with a width
   // Wikimedia no longer serves heals itself the next time it is shown.
   return u.avatarUrl
-    ? `<img class="avatar-img" src="${esc(avatarSizedUrl(u.avatarUrl, 250))}" alt="${esc(name)}" title="${esc(u.avatarBird || name)}" loading="lazy" onerror="window.avatarFallback(this,'${esc(initials(name))}')">`
+    ? `<img class="avatar-img" src="${esc(avatarSizedUrl(u.avatarUrl, 250))}" alt="${esc(name)}" title="${esc(u.avatarBird || name)}" loading="lazy" style="object-position:${avatarPosition(u)};" onerror="window.avatarFallback(this,'${esc(initials(name))}')">`
     : esc(initials(name));
 }
 
@@ -1662,10 +1678,13 @@ async function renderMyProfile() {
 // resolved once, here, and only its URL is stored — rendering an avatar never
 // calls Wikipedia, which would mean an API request per avatar per page view.
 let avatarPick = null; // { species, url }
+let avatarPos = { x: 50, y: 50 }; // framing within the circle, in percent
 
 window.openAvatarPicker = function() {
   avatarPick = null;
   const current = allUsersCache[currentUser] || {};
+  const startPos = avatarPosition(current).match(/\d{1,3}/g) || ['50','50'];
+  avatarPos = { x: Number(startPos[0]), y: Number(startPos[1]) };
   showModal(`
     <div class="modal-title">Choose your profile bird</div>
     <div class="modal-body">
@@ -1724,12 +1743,58 @@ window.previewAvatarBird = async function() {
     const url = avatarSizedUrl(result.img, 250);
     avatarPick = { species, url };
     box.innerHTML = `
-      <img src="${esc(url)}" alt="${esc(species)}">
-      <div class="avatar-preview-name">${esc(species)}</div>`;
+      <img id="avatar-preview-img" class="draggable" src="${esc(url)}" alt="${esc(species)}"
+           style="object-position:${avatarPos.x}% ${avatarPos.y}%;" draggable="false">
+      <div class="avatar-preview-name">${esc(species)}</div>
+      <div class="avatar-adjust">
+        <span class="avatar-preview-hint" style="margin:0;">Drag the photo to frame it</span>
+        <button type="button" class="btn-recenter" onclick="window.recentreAvatar()">Centre</button>
+      </div>`;
+    bindAvatarDrag();
     if (document.getElementById('avatar-save-btn')) document.getElementById('avatar-save-btn').disabled = false;
   } else {
     box.innerHTML = `<div class="avatar-preview-hint">No bird photo found for &ldquo;${esc(species)}&rdquo;.<br>Check the spelling, or try another bird.</div>`;
   }
+}
+
+// Dragging shifts which part of the photo the circle shows. Moving the photo
+// right reveals more of its left edge, so object-position moves the opposite
+// way to the pointer. A drag across the full circle covers the whole range.
+function bindAvatarDrag() {
+  const img = document.getElementById('avatar-preview-img');
+  if (!img) return;
+  let startX = 0, startY = 0, originX = 50, originY = 50, dragging = false;
+  const size = img.getBoundingClientRect().width || 112;
+  const clamp = v => Math.max(0, Math.min(100, v));
+
+  img.addEventListener('pointerdown', e => {
+    dragging = true;
+    startX = e.clientX; startY = e.clientY;
+    originX = avatarPos.x; originY = avatarPos.y;
+    img.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+
+  img.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    avatarPos.x = clamp(originX - (e.clientX - startX) / size * 100);
+    avatarPos.y = clamp(originY - (e.clientY - startY) / size * 100);
+    img.style.objectPosition = `${Math.round(avatarPos.x)}% ${Math.round(avatarPos.y)}%`;
+  });
+
+  const end = e => {
+    if (!dragging) return;
+    dragging = false;
+    try { img.releasePointerCapture(e.pointerId); } catch(err) { /* already released */ }
+  };
+  img.addEventListener('pointerup', end);
+  img.addEventListener('pointercancel', end);
+}
+
+window.recentreAvatar = function() {
+  avatarPos = { x: 50, y: 50 };
+  const img = document.getElementById('avatar-preview-img');
+  if (img) img.style.objectPosition = '50% 50%';
 }
 
 window.saveAvatarBird = async function() {
@@ -1737,12 +1802,14 @@ window.saveAvatarBird = async function() {
   const btn = document.getElementById('avatar-save-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
   try {
+    const avatarPosValue = `${Math.round(avatarPos.x)}% ${Math.round(avatarPos.y)}%`;
     await updateDoc(doc(db, 'users', currentUser), {
-      avatarBird: avatarPick.species, avatarUrl: avatarPick.url
+      avatarBird: avatarPick.species, avatarUrl: avatarPick.url, avatarPos: avatarPosValue
     });
     invalidateUserCache();
     allUsersCache[currentUser] = {
-      ...allUsersCache[currentUser], avatarBird: avatarPick.species, avatarUrl: avatarPick.url
+      ...allUsersCache[currentUser],
+      avatarBird: avatarPick.species, avatarUrl: avatarPick.url, avatarPos: avatarPosValue
     };
     closeModal();
     renderMyProfile();
@@ -1754,9 +1821,9 @@ window.saveAvatarBird = async function() {
 
 window.clearAvatarBird = async function() {
   try {
-    await updateDoc(doc(db, 'users', currentUser), { avatarBird: '', avatarUrl: '' });
+    await updateDoc(doc(db, 'users', currentUser), { avatarBird: '', avatarUrl: '', avatarPos: '' });
     invalidateUserCache();
-    allUsersCache[currentUser] = { ...allUsersCache[currentUser], avatarBird: '', avatarUrl: '' };
+    allUsersCache[currentUser] = { ...allUsersCache[currentUser], avatarBird: '', avatarUrl: '', avatarPos: '' };
     closeModal();
     renderMyProfile();
   } catch(e) { console.error('clearAvatarBird', e); }
