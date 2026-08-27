@@ -169,6 +169,11 @@
     transition: border-color 0.15s; outline: none;
   }
   .form-input:focus { border-color: var(--gold); }
+  /* iOS Safari gives date inputs an intrinsic width that ignores width:100%,
+     and grid/flex children default to min-width:auto — together they push the
+     input past the edge of the card. */
+  .form-input[type="date"] { -webkit-appearance: none; appearance: none; display: block; min-width: 0; max-width: 100%; }
+  .add-bird-grid > * { min-width: 0; }
   .form-input::placeholder { color: rgba(245,237,214,0.25); }
   .btn-primary {
     width: 100%; background: var(--gold); border: none;
@@ -294,6 +299,27 @@
   .profile-info-sub { font-size: 0.8rem; color: rgba(245,237,214,0.4); font-style: italic; margin-top: 0.1rem; }
   .back-btn { background: none; border: none; color: rgba(200,149,42,0.6); font-family: 'Source Sans 3', sans-serif; font-size: 0.8rem; cursor: pointer; padding: 0; margin-bottom: 1.25rem; display: inline-flex; align-items: center; gap: 0.3rem; transition: color 0.15s; }
   .back-btn:hover { color: var(--gold); }
+
+
+  /* CHECKLISTS */
+  .cl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0.75rem; }
+  .cl-card { background: rgba(245,237,214,0.04); border: 1px solid rgba(200,149,42,0.2); border-radius: 6px; padding: 0.9rem 1rem; cursor: pointer; transition: all 0.15s; }
+  .cl-card:hover { background: rgba(200,149,42,0.08); border-color: rgba(200,149,42,0.4); }
+  .cl-card.complete { background: rgba(200,149,42,0.13); border-color: rgba(200,149,42,0.6); }
+  .cl-card-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.1rem; }
+  .cl-card-name { font-size: 0.95rem; font-weight: 600; color: var(--cream); }
+  .cl-card.complete .cl-card-name { color: var(--pale-gold); }
+  .cl-card-frac { font-family: 'Playfair Display', serif; font-size: 1rem; color: var(--gold); flex-shrink: 0; }
+  .cl-card-sub { font-size: 0.7rem; color: rgba(245,237,214,0.35); margin-bottom: 0.55rem; }
+  .cl-bar { height: 6px; background: rgba(245,237,214,0.08); border-radius: 3px; overflow: hidden; }
+  .cl-bar-fill { height: 100%; background: var(--sage); border-radius: 3px; transition: width 0.25s; }
+  .cl-card.complete .cl-bar-fill { background: var(--gold); }
+  .cl-detail { border: 1px solid rgba(200,149,42,0.35); border-radius: 6px; padding: 1rem; margin-bottom: 1.25rem; background: rgba(245,237,214,0.03); }
+  .cl-detail-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.85rem; }
+  .cl-detail-title { font-family: 'Playfair Display', serif; font-size: 1.25rem; color: var(--gold); }
+  .cl-finders { font-size: 0.72rem; color: rgba(200,149,42,0.8); }
+  .cl-missing { font-size: 0.72rem; color: rgba(245,237,214,0.28); font-style: italic; }
+  .cl-likelihood { font-size: 0.6rem; color: rgba(245,237,214,0.3); letter-spacing: 0.15em; }
 
   .tag { display: inline-block; font-size: 0.65rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 0.15rem 0.5rem; border-radius: 2px; background: rgba(74,103,65,0.25); color: #b8d4b0; border: 1px solid rgba(74,103,65,0.4); margin-left: 0.35rem; }
   .site-footer {
@@ -776,6 +802,31 @@
 </div>
 
 <!-- FAMILY PROFILES -->
+<!-- CHECKLISTS -->
+<div id="page-lists" class="page">
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">Checklists</div>
+      <div class="page-subtitle">NE Ohio's birds sorted into groups — try to finish a whole list</div>
+    </div>
+    <div class="detection-toggle" style="max-width:380px;margin-bottom:1.25rem;">
+      <button type="button" class="detection-btn active" id="cl-scope-me" onclick="window.setChecklistScope('me')">Just me</button>
+      <button type="button" class="detection-btn" id="cl-scope-family" onclick="window.setChecklistScope('family')">Whole family</button>
+    </div>
+    <div class="stats-row" id="cl-stats"></div>
+    <div class="detection-toggle" style="max-width:560px;margin-bottom:1rem;flex-wrap:wrap;">
+      <button type="button" class="detection-btn active" id="cl-cat-group" onclick="window.setChecklistCat('group')">By group</button>
+      <button type="button" class="detection-btn" id="cl-cat-season" onclick="window.setChecklistCat('season')">By season</button>
+      <button type="button" class="detection-btn" id="cl-cat-likelihood" onclick="window.setChecklistCat('likelihood')">By difficulty</button>
+    </div>
+    <input class="search-input" id="cl-search" type="text" placeholder="Filter lists…" oninput="window.renderChecklists()">
+    <div id="cl-detail"></div>
+    <div id="cl-lists"><div class="empty-state">Loading…</div></div>
+  </div>
+  <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
+</div>
+
+<!-- PROFILES -->
 <div id="page-profiles" class="page">
   <div class="content">
     <div class="page-header">
@@ -1068,6 +1119,7 @@ const NAV_ITEMS = [
   { page: 'activity',  label: 'Activity' },
   { page: 'nearby',    label: 'Near You' },
   { page: 'shared',    label: 'Shared' },
+  { page: 'lists',     label: 'Checklists' },
   { page: 'profiles',  label: 'Family' },
   { page: 'compare',   label: 'Compare Profiles' },
   { page: 'countdown', label: 'Countdown' },
@@ -1144,6 +1196,19 @@ function formatTime(ts) {
   if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
   return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
 }
+
+// Calendar date (YYYY-MM-DD) in Eastern time — the Big Year's reference zone.
+// toISOString() would give the *UTC* date, which rolls over at 8pm ET, so an
+// evening sighting would be stamped with tomorrow's date.
+function todayET() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(new Date());
+}
+
+// Escape a string for use inside a single-quoted JS argument in an inline
+// onclick="" attribute — the backslash guards the JS string, esc() the HTML.
+function jsArg(str) { return esc(String(str||'').replace(/\\/g, '\\\\').replace(/'/g, "\\'")); }
 
 function initials(name) { return String(name||'?').slice(0,2).toUpperCase(); }
 
@@ -1315,6 +1380,7 @@ window.showPage = function(name) {
   if (name === 'activity') renderActivity();
   if (name === 'nearby') renderNearby();
   if (name === 'shared') renderSharedPage();
+  if (name === 'lists') renderChecklistsPage();
   if (name === 'profiles') renderProfiles();
   if (name === 'compare') renderComparePage();
   if (name === 'myprofile') renderMyProfile();
@@ -1938,7 +2004,7 @@ window.adminExportCSV = async function() {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const today = new Date().toISOString().split('T')[0];
+    const today = todayET();
     a.href = url;
     a.download = `lamanna-bigyear-${today}.csv`;
     a.click();
@@ -2702,7 +2768,7 @@ async function updateBirdEntry() {
 
   const score = currentDetection === 'seen' ? 2 : 1;
   const detection = currentDetection;
-  const dateVal = date || new Date().toISOString().split('T')[0];
+  const dateVal = date || todayET();
   const lat = (window._selectedLat !== undefined) ? window._selectedLat : null;
   const lng = (window._selectedLng !== undefined) ? window._selectedLng : null;
 
@@ -2771,7 +2837,7 @@ window.addBird = async function() {
 
   const score = currentDetection === 'seen' ? 2 : 1;
   const detection = currentDetection;
-  const dateVal = date || new Date().toISOString().split('T')[0];
+  const dateVal = date || todayET();
   // Pick up coordinates from city selection (set by selectCity)
   const lat = window._selectedLat || null;
   const lng = window._selectedLng || null;
@@ -2966,7 +3032,7 @@ async function logShareIntoBirds(s, myBirdsMap) {
     const ref = await addDoc(collection(db, 'users', currentUser, 'birds'), {
       species: s.species, location: s.location || '', note: s.note || '',
       score: newScore, detection: s.detection || 'seen',
-      date: s.date || new Date().toISOString().split('T')[0],
+      date: s.date || todayET(),
       addedAt: serverTimestamp()
     });
     myBirdsMap[key] = { id: ref.id, score: newScore, location: s.location || '', date: s.date || '', note: s.note || '' };
@@ -3393,9 +3459,14 @@ async function renderProfiles() {
   // (re-read the live object each pass so snapshot refreshes pick up changes)
   function daysAgo(dateStr) {
     if (!dateStr) return 'No birds logged yet';
-    const diff = Date.now() - new Date(dateStr + 'T12:00:00').getTime();
-    const days = Math.floor(diff / 86400000);
-    if (days === 0) return 'Last bird: today';
+    // Whole calendar days apart in Eastern time. Diffing raw timestamps instead
+    // mixes in the current clock time, so a bird logged yesterday reads as
+    // "today" all morning and today's bird can read as "-1 days ago".
+    const then = Date.parse(dateStr + 'T00:00:00Z');
+    const now  = Date.parse(todayET() + 'T00:00:00Z');
+    if (isNaN(then)) return 'No birds logged yet';
+    const days = Math.round((now - then) / 86400000);
+    if (days <= 0) return 'Last bird: today';
     if (days === 1) return 'Last bird: yesterday';
     return `Last bird: ${days} days ago`;
   }
@@ -3730,13 +3801,275 @@ document.getElementById('prof-pw-confirm').addEventListener('keydown', e => { if
 document.getElementById('login-username').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('login-password').focus(); });
 document.getElementById('setpw-confirm').addEventListener('keydown', e => { if (e.key==='Enter') handleSetPassword(); });
 
+// ── CHECKLISTS ─────────────────────────────────────────────────────────────
+// Reference table of NE Ohio birds tagged with the groups they belong to, how
+// likely they are here, and when they show up. Each tag becomes a "list" the
+// family can try to complete.
+// Source file: https://github.com/drwitte111/LaManna-Big-Year/blob/main/ne_ohio_birds.csv
+// Columns: common_name, group_primary, groups (pipe-separated), likelihood (1-5), season
+// Served from the repo itself, so the same-origin copy is tried first; the raw
+// GitHub URL is the fallback for when the page is opened from somewhere else.
+const NEOH_BIRDS_URLS = [
+  'ne_ohio_birds.csv',
+  'https://raw.githubusercontent.com/drwitte111/LaManna-Big-Year/main/ne_ohio_birds.csv',
+];
+let NEOH_BIRDS = [];      // [{ name, key, groups:[], likelihood, seasons:[] }]
+let CHECKLISTS = { group: [], season: [], likelihood: [] };
+
+// Species names drift between sources (AOS renames and splits, plus older
+// spellings still sitting in people's logs). Compare on a punctuation-free
+// lowercase form and fold known aliases onto one key, so "Barn Owl" and
+// "American Barn Owl" count as the same bird.
+const SPECIES_ALIASES = {
+  'barn owl': 'american barn owl',
+  'northern goshawk': 'american goshawk',
+  'common redpoll': 'redpoll',
+  'hoary redpoll': 'redpoll',
+  'cattle egret': 'western cattle egret',
+  'mew gull': 'common gull',
+  'warbling vireo': 'eastern warbling vireo',
+  'house wren': 'northern house wren',
+  'herring gull': 'american herring gull',
+  'yellow warbler': 'northern yellow warbler',
+  'whip poor will': 'eastern whip poor will',
+  'whimbrel': 'hudsonian whimbrel',
+  'rufous sided towhee': 'eastern towhee',
+  'common moorhen': 'common gallinule',
+  'oldsquaw': 'long tailed duck',
+  'thayers gull': 'iceland gull',
+  'sharp tailed sparrow': 'nelsons sparrow',
+};
+
+function speciesKey(name) {
+  const flat = String(name || '')
+    .toLowerCase()
+    // Apostrophes vanish rather than becoming a space, so a typed "Coopers
+    // Hawk" still keys the same as "Cooper's Hawk".
+    .replace(/[‘’']/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+  return SPECIES_ALIASES[flat] || flat;
+}
+
+const LIKELIHOOD_TIERS = [
+  { n: 5, label: 'Everyday Birds',      blurb: 'Hard to miss around here' },
+  { n: 4, label: 'Common with Effort',  blurb: 'Show up if you go looking' },
+  { n: 3, label: 'Worth Searching For', blurb: 'Right habitat, right season' },
+  { n: 2, label: 'Uncommon',            blurb: 'A genuinely good find' },
+  { n: 1, label: 'Rarities',            blurb: 'Drop-everything birds' },
+];
+
+async function loadChecklistData() {
+  let text = null;
+  for (const url of NEOH_BIRDS_URLS) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) { text = await res.text(); break; }
+    } catch(e) { /* fall through to the next source */ }
+  }
+  if (text === null) { console.error('Could not fetch the NE Ohio bird list'); return; }
+
+  try {
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    NEOH_BIRDS = lines.slice(1).map(line => {
+      const [name, , groups, likelihood, season] = parseCSVLine(line);
+      if (!name) return null;
+      return {
+        name,
+        key: speciesKey(name),
+        groups: String(groups || '').split('|').map(s => s.trim()).filter(Boolean),
+        likelihood: Number(likelihood) || 1,
+        // "Migration/Summer" means the bird counts toward both season lists.
+        seasons: String(season || '').split('/').map(s => s.trim()).filter(Boolean),
+      };
+    }).filter(Boolean);
+    buildChecklists();
+  } catch(e) {
+    console.error('Failed to parse the NE Ohio bird list', e);
+  }
+}
+
+function buildChecklists() {
+  const byGroup = {}, bySeason = {};
+  NEOH_BIRDS.forEach(b => {
+    b.groups.forEach(g => (byGroup[g] = byGroup[g] || []).push(b));
+    b.seasons.forEach(s => (bySeason[s] = bySeason[s] || []).push(b));
+  });
+
+  const toList = obj => Object.entries(obj)
+    .map(([name, birds]) => ({ id: name, name, sub: birds.length + ' species', birds }))
+    .sort((a, b) => b.birds.length - a.birds.length || a.name.localeCompare(b.name));
+
+  CHECKLISTS.group  = toList(byGroup);
+  CHECKLISTS.season = toList(bySeason);
+  CHECKLISTS.likelihood = LIKELIHOOD_TIERS
+    .map(t => ({
+      id: 'lk' + t.n,
+      name: t.label,
+      sub: t.blurb,
+      birds: NEOH_BIRDS.filter(b => b.likelihood === t.n),
+    }))
+    .filter(l => l.birds.length);
+}
+
+// Which species the family has, and who found each one. Rebuilt whenever the
+// Checklists tab opens so it picks up anything logged since last time.
+let familyIndex = null; // Map: speciesKey → [{ key, display, score }]
+
+async function loadFamilyIndex() {
+  await loadAllUsers();
+  const people = Object.entries(allUsersCache).filter(([key]) => key !== '__admin__');
+  const snaps = await Promise.all(
+    people.map(([key]) => getDocs(collection(db, 'users', key, 'birds')))
+  );
+  const index = new Map();
+  snaps.forEach((snap, i) => {
+    const [key, u] = people[i];
+    const display = u.display || key;
+    snap.docs.forEach(d => {
+      const b = d.data();
+      if (!b.species) return;
+      const k = speciesKey(b.species);
+      const score = b.score || (b.detection === 'seen' ? 2 : 1);
+      const finders = index.get(k) || [];
+      const existing = finders.find(f => f.key === key);
+      if (existing) { if (score > existing.score) existing.score = score; }
+      else finders.push({ key, display, score });
+      index.set(k, finders);
+    });
+  });
+  familyIndex = index;
+}
+
+let checklistState = { scope: 'me', cat: 'group', openId: null };
+
+window.setChecklistScope = function(scope) {
+  checklistState.scope = scope;
+  document.getElementById('cl-scope-me').classList.toggle('active', scope === 'me');
+  document.getElementById('cl-scope-family').classList.toggle('active', scope === 'family');
+  window.renderChecklists();
+}
+
+window.setChecklistCat = function(cat) {
+  checklistState.cat = cat;
+  checklistState.openId = null;
+  ['group','season','likelihood'].forEach(c =>
+    document.getElementById('cl-cat-' + c).classList.toggle('active', c === cat));
+  window.renderChecklists();
+}
+
+window.toggleChecklist = function(id) {
+  checklistState.openId = checklistState.openId === id ? null : id;
+  window.renderChecklists();
+  if (checklistState.openId) {
+    document.getElementById('cl-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+async function renderChecklistsPage() {
+  const listEl = document.getElementById('cl-lists');
+  // Startup fetch may have failed (e.g. offline on first load) — retry once.
+  if (!NEOH_BIRDS.length) await loadChecklistData();
+  if (!NEOH_BIRDS.length) {
+    listEl.innerHTML = '<div class="empty-state">Could not load the NE Ohio bird list.</div>';
+    return;
+  }
+  listEl.innerHTML = '<div class="empty-state">Loading…</div>';
+  await loadFamilyIndex();
+  window.renderChecklists();
+}
+
+// Who counts as having found a species, under the current scope.
+function findersFor(birdKey) {
+  const all = familyIndex ? (familyIndex.get(birdKey) || []) : [];
+  return checklistState.scope === 'family' ? all : all.filter(f => f.key === currentUser);
+}
+
+window.renderChecklists = function() {
+  const listEl = document.getElementById('cl-lists');
+  const detailEl = document.getElementById('cl-detail');
+  const statsEl = document.getElementById('cl-stats');
+  if (!listEl || !familyIndex) return;
+
+  const lists = CHECKLISTS[checklistState.cat] || [];
+  const scored = lists.map(l => {
+    const done = l.birds.filter(b => findersFor(b.key).length).length;
+    return { ...l, done, pct: l.birds.length ? Math.round(done / l.birds.length * 100) : 0 };
+  });
+
+  // Overall coverage is the same number whichever category is on screen.
+  const foundTotal = NEOH_BIRDS.filter(b => findersFor(b.key).length).length;
+  const completeLists = scored.filter(l => l.done === l.birds.length).length;
+  const whose = checklistState.scope === 'family' ? 'the family' : 'you';
+  statsEl.innerHTML = `
+    <div class="stat-card"><div class="stat-num">${completeLists}/${scored.length}</div><div class="stat-label">Lists complete</div></div>
+    <div class="stat-card"><div class="stat-num">${foundTotal}</div><div class="stat-label">Of ${NEOH_BIRDS.length} NE Ohio birds</div></div>
+    <div class="stat-card"><div class="stat-num">${Math.round(foundTotal / NEOH_BIRDS.length * 100)}%</div><div class="stat-label">Covered by ${whose}</div></div>`;
+
+  const q = (document.getElementById('cl-search')?.value || '').trim().toLowerCase();
+  const shown = q ? scored.filter(l => l.name.toLowerCase().includes(q)) : scored;
+
+  const open = scored.find(l => l.id === checklistState.openId);
+  detailEl.innerHTML = open ? checklistDetailHTML(open) : '';
+
+  listEl.innerHTML = shown.length ? `<div class="cl-grid">${shown.map(l => `
+    <div class="cl-card${l.done === l.birds.length ? ' complete' : ''}" onclick="window.toggleChecklist('${jsArg(l.id)}')">
+      <div class="cl-card-top">
+        <span class="cl-card-name">${esc(l.name)}${l.done === l.birds.length ? ' ✓' : ''}</span>
+        <span class="cl-card-frac">${l.done}/${l.birds.length}</span>
+      </div>
+      <div class="cl-card-sub">${esc(l.sub)}</div>
+      <div class="cl-bar"><div class="cl-bar-fill" style="width:${l.pct}%"></div></div>
+    </div>`).join('')}</div>`
+    : '<div class="empty-state">No lists match that filter.</div>';
+}
+
+function checklistDetailHTML(list) {
+  const complete = list.done === list.birds.length;
+  // Likeliest birds first — that's the order you'd actually go get them in.
+  const birds = [...list.birds].sort((a, b) =>
+    b.likelihood - a.likelihood || a.name.localeCompare(b.name));
+  const isFamily = checklistState.scope === 'family';
+
+  const cards = birds.map(b => {
+    const finders = findersFor(b.key);
+    const got = finders.length > 0;
+    const dots = '●'.repeat(b.likelihood) + '○'.repeat(5 - b.likelihood);
+    let line;
+    if (!got) line = '<div class="cl-missing">Not yet found</div>';
+    else if (isFamily) line = `<div class="cl-finders">✓ ${esc(finders.map(f => f.display).join(', '))}</div>`;
+    else line = `<div class="cl-finders">✓ ${finders[0].score >= 2 ? 'Seen' : 'Heard'}</div>`;
+    return `
+      <div class="bird-card${got ? ' bird-card-matched' : ''}">
+        <div class="bird-name">${esc(b.name)}</div>
+        <div class="cl-likelihood" title="Likelihood in NE Ohio: ${b.likelihood}/5">${dots}</div>
+        ${line}
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="cl-detail">
+      <div class="cl-detail-head">
+        <div>
+          <div class="cl-detail-title">${esc(list.name)}${complete ? ' ✓' : ''}</div>
+          <div class="cl-card-sub" style="margin:0;">
+            ${list.done} of ${list.birds.length} found by ${isFamily ? 'the family' : 'you'}${complete ? '<span class="tag">Complete</span>' : ''}
+          </div>
+        </div>
+        <button class="back-btn" style="margin:0;" onclick="window.toggleChecklist('${jsArg(list.id)}')">Close ✕</button>
+      </div>
+      <div class="cl-bar" style="margin-bottom:1rem;"><div class="cl-bar-fill" style="width:${list.pct}%"></div></div>
+      <div class="birds-grid">${cards}</div>
+    </div>`;
+}
+
 // ── INIT ───────────────────────────────────────────────────────────────────
 (async function init() {
   document.getElementById('bird-date').valueAsDate = new Date();
 
   // Load Big Year dates from Firestore, plus reference data from GitHub,
   // before anything else.
-  await Promise.all([loadByDates(), loadOhioBirds(), loadCityData()]);
+  await Promise.all([loadByDates(), loadOhioBirds(), loadCityData(), loadChecklistData()]);
 
   if (currentUser) {
     if (currentUser === '__admin__') {

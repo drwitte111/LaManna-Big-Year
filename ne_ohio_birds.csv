@@ -1,0 +1,321 @@
+common_name,group_primary,groups,likelihood,season
+Mourning Dove,Dove & Pigeon,Dove & Pigeon,5,Year-round
+Common Nighthawk,Nightjar & Swift,Nightjar & Swift|Aerial Insectivore,4,Migration/Summer
+Chimney Swift,Nightjar & Swift,Nightjar & Swift|Aerial Insectivore,5,Summer
+House Finch,Songbird,Songbird|Finch,5,Year-round
+Eastern Wood-Pewee,Songbird,Songbird|Flycatcher|Aerial Insectivore,4,Summer
+American Robin,Songbird,Songbird|Thrush,5,Year-round
+Great Horned Owl,Bird of Prey,Bird of Prey|Owl,3,Year-round
+Barred Owl,Bird of Prey,Bird of Prey|Owl,3,Year-round
+Eastern Screech-Owl,Bird of Prey,Bird of Prey|Owl,3,Year-round
+Mallard,Waterfowl,Waterfowl|Waterbird,5,Year-round
+Ruby-throated Hummingbird,Hummingbird,Hummingbird,5,Summer
+Great Blue Heron,Wading Bird,Wading Bird|Waterbird,5,Year-round
+Blue Jay,Songbird,Songbird|Corvid,5,Year-round
+White-breasted Nuthatch,Songbird,Songbird,5,Year-round
+Gray Catbird,Songbird,Songbird,5,Summer
+American Goldfinch,Songbird,Songbird|Finch,5,Year-round
+Wood Duck,Waterfowl,Waterfowl|Waterbird,4,Year-round
+Black-crowned Night Heron,Wading Bird,Wading Bird|Waterbird,3,Summer
+Green Heron,Wading Bird,Wading Bird|Waterbird,4,Summer
+Belted Kingfisher,Waterbird,Waterbird,4,Year-round
+Cedar Waxwing,Songbird,Songbird,4,Year-round
+Northern Cardinal,Songbird,Songbird,5,Year-round
+House Sparrow,Songbird,Songbird,5,Year-round
+Barn Swallow,Songbird,Songbird|Swallow|Aerial Insectivore,5,Summer
+Eastern Bluebird,Songbird,Songbird|Thrush,4,Year-round
+Chipping Sparrow,Songbird,Songbird|Sparrow,5,Summer
+Red-winged Blackbird,Songbird,Songbird|Blackbird & Oriole,5,Year-round
+American Crow,Songbird,Songbird|Corvid,5,Year-round
+European Starling,Songbird,Songbird,5,Year-round
+Canada Goose,Waterfowl,Waterfowl|Waterbird,5,Year-round
+Ring-billed Gull,Gull & Tern,Gull & Tern|Waterbird,5,Year-round
+Savannah Sparrow,Songbird,Songbird|Sparrow,4,Migration/Summer
+Cooper's Hawk,Bird of Prey,Bird of Prey,4,Year-round
+Carolina Wren,Songbird,Songbird|Wren,4,Year-round
+Wood Thrush,Songbird,Songbird|Thrush,4,Summer
+Eastern Towhee,Songbird,Songbird|Sparrow,4,Summer
+Common Grackle,Songbird,Songbird|Blackbird & Oriole,5,Year-round
+Great Egret,Wading Bird,Wading Bird|Waterbird,4,Summer
+Osprey,Bird of Prey,Bird of Prey,4,Summer
+Northern Rough-winged Swallow,Songbird,Songbird|Swallow|Aerial Insectivore,4,Summer
+American Barn Owl,Bird of Prey,Bird of Prey|Owl,1,Year-round
+American Kestrel,Bird of Prey,Bird of Prey,4,Year-round
+Downy Woodpecker,Woodpecker,Woodpecker,5,Year-round
+Carolina Chickadee,Songbird,Songbird,2,Year-round
+Black-capped Chickadee,Songbird,Songbird,5,Year-round
+Tufted Titmouse,Songbird,Songbird,5,Year-round
+Northern Flicker,Woodpecker,Woodpecker,5,Year-round
+Hairy Woodpecker,Woodpecker,Woodpecker,4,Year-round
+American Black Duck,Waterfowl,Waterfowl|Waterbird,3,Migration/Winter
+Common Merganser,Waterfowl,Waterfowl|Waterbird,3,Winter
+American Herring Gull,Gull & Tern,Gull & Tern|Waterbird,5,Year-round
+Double-crested Cormorant,Waterbird,Waterbird,5,Year-round
+Red-bellied Woodpecker,Woodpecker,Woodpecker,5,Year-round
+Pileated Woodpecker,Woodpecker,Woodpecker,3,Year-round
+Tree Swallow,Songbird,Songbird|Swallow|Aerial Insectivore,5,Summer
+Killdeer,Shorebird,Shorebird,5,Year-round
+Bald Eagle,Bird of Prey,Bird of Prey,4,Year-round
+Eastern Kingbird,Songbird,Songbird|Flycatcher|Aerial Insectivore,4,Summer
+Purple Martin,Songbird,Songbird|Swallow|Aerial Insectivore,3,Summer
+Baltimore Oriole,Songbird,Songbird|Blackbird & Oriole,5,Summer
+Rock Pigeon,Dove & Pigeon,Dove & Pigeon,5,Year-round
+Yellow-billed Cuckoo,Cuckoo,Cuckoo,3,Summer
+Spotted Sandpiper,Shorebird,Shorebird,4,Summer
+Caspian Tern,Gull & Tern,Gull & Tern|Waterbird,3,Migration/Summer
+Turkey Vulture,Bird of Prey,Bird of Prey|Vulture,5,Year-round
+Song Sparrow,Songbird,Songbird|Sparrow,5,Year-round
+Indigo Bunting,Songbird,Songbird,4,Summer
+Blue-gray Gnatcatcher,Songbird,Songbird,4,Summer
+Wild Turkey,Gamebird,Gamebird,3,Year-round
+Red-tailed Hawk,Bird of Prey,Bird of Prey,5,Year-round
+Pied-billed Grebe,Waterbird,Waterbird,3,Migration
+Great Crested Flycatcher,Songbird,Songbird|Flycatcher|Aerial Insectivore,4,Summer
+Swamp Sparrow,Songbird,Songbird|Sparrow,3,Migration/Summer
+Red-shouldered Hawk,Bird of Prey,Bird of Prey,3,Year-round
+Eastern Phoebe,Songbird,Songbird|Flycatcher|Aerial Insectivore,5,Summer
+Red-eyed Vireo,Songbird,Songbird|Vireo,4,Summer
+Bonaparte's Gull,Gull & Tern,Gull & Tern|Waterbird,3,Migration/Winter
+American Golden-Plover,Shorebird,Shorebird,2,Migration
+Wilson's Snipe,Shorebird,Shorebird,3,Migration
+Solitary Sandpiper,Shorebird,Shorebird,3,Migration
+Lesser Yellowlegs,Shorebird,Shorebird,3,Migration
+Greater Yellowlegs,Shorebird,Shorebird,3,Migration
+Baird's Sandpiper,Shorebird,Shorebird,2,Migration
+Least Sandpiper,Shorebird,Shorebird,3,Migration
+Pectoral Sandpiper,Shorebird,Shorebird,3,Migration
+Horned Lark,Songbird,Songbird,3,Year-round
+Red-headed Woodpecker,Woodpecker,Woodpecker,2,Year-round
+Cape May Warbler,Songbird,Songbird|Warbler,3,Migration
+Merlin,Bird of Prey,Bird of Prey,2,Migration/Winter
+Common Yellowthroat,Songbird,Songbird|Warbler,5,Summer
+Sharp-shinned Hawk,Bird of Prey,Bird of Prey,3,Migration/Winter
+Field Sparrow,Songbird,Songbird|Sparrow,3,Summer
+Bobolink,Songbird,Songbird|Blackbird & Oriole,3,Summer
+Eastern Meadowlark,Songbird,Songbird|Blackbird & Oriole,3,Year-round
+Yellow-bellied Flycatcher,Songbird,Songbird|Flycatcher|Aerial Insectivore,2,Migration
+Least Flycatcher,Songbird,Songbird|Flycatcher|Aerial Insectivore,3,Migration/Summer
+Northern House Wren,Songbird,Songbird|Wren,5,Summer
+Swainson's Thrush,Songbird,Songbird|Thrush,3,Migration
+Magnolia Warbler,Songbird,Songbird|Warbler,4,Migration
+Blackburnian Warbler,Songbird,Songbird|Warbler,3,Migration
+Rose-breasted Grosbeak,Songbird,Songbird,4,Summer
+White-eyed Vireo,Songbird,Songbird|Vireo,2,Summer
+Great Black-backed Gull,Gull & Tern,Gull & Tern|Waterbird,3,Winter
+Bank Swallow,Songbird,Songbird|Swallow|Aerial Insectivore,3,Summer
+Black Vulture,Bird of Prey,Bird of Prey|Vulture,2,Year-round
+Green-winged Teal,Waterfowl,Waterfowl|Waterbird,3,Migration
+Semipalmated Plover,Shorebird,Shorebird,3,Migration
+Sandhill Crane,Wading Bird,Wading Bird,3,Migration/Summer
+American White Pelican,Waterbird,Waterbird,1,Migration
+Marsh Wren,Marsh Bird,Marsh Bird|Songbird|Wren,3,Summer
+Broad-winged Hawk,Bird of Prey,Bird of Prey,3,Migration/Summer
+Bay-breasted Warbler,Songbird,Songbird|Warbler,3,Migration
+Northern Mockingbird,Songbird,Songbird,3,Year-round
+Trumpeter Swan,Waterfowl,Waterfowl|Waterbird,2,Year-round
+Black-and-white Warbler,Songbird,Songbird|Warbler,4,Migration/Summer
+Mute Swan,Waterfowl,Waterfowl|Waterbird,3,Year-round
+Red-breasted Nuthatch,Songbird,Songbird,3,Migration/Winter
+Blue-winged Teal,Waterfowl,Waterfowl|Waterbird,3,Migration
+Short-billed Dowitcher,Shorebird,Shorebird,2,Migration
+Willet,Shorebird,Shorebird,1,Migration
+Semipalmated Sandpiper,Shorebird,Shorebird,3,Migration
+Willow Flycatcher,Songbird,Songbird|Flycatcher|Aerial Insectivore,3,Summer
+Forster's Tern,Gull & Tern,Gull & Tern|Waterbird,2,Migration
+Common Tern,Gull & Tern,Gull & Tern|Waterbird,3,Migration/Summer
+Fish Crow,Songbird,Songbird|Corvid,2,Year-round
+Common Raven,Songbird,Songbird|Corvid,2,Year-round
+Blue Grosbeak,Songbird,Songbird,1,Summer
+Northern Yellow Warbler,Songbird,Songbird|Warbler,5,Summer
+Yellow-throated Warbler,Songbird,Songbird|Warbler,2,Summer
+Chestnut-sided Warbler,Songbird,Songbird|Warbler,4,Migration/Summer
+Yellow-throated Vireo,Songbird,Songbird|Vireo,3,Summer
+Eastern Warbling Vireo,Songbird,Songbird|Vireo,4,Summer
+Stilt Sandpiper,Shorebird,Shorebird,2,Migration
+Cliff Swallow,Songbird,Songbird|Swallow|Aerial Insectivore,3,Summer
+Acadian Flycatcher,Songbird,Songbird|Flycatcher|Aerial Insectivore,3,Summer
+Brown-headed Cowbird,Songbird,Songbird|Blackbird & Oriole,5,Year-round
+Northern Harrier,Bird of Prey,Bird of Prey,3,Migration/Winter
+Hooded Warbler,Songbird,Songbird|Warbler,3,Summer
+Summer Tanager,Songbird,Songbird,1,Summer
+Olive-sided Flycatcher,Songbird,Songbird|Flycatcher|Aerial Insectivore,2,Migration
+American Redstart,Songbird,Songbird|Warbler,4,Migration/Summer
+Canada Warbler,Songbird,Songbird|Warbler,3,Migration
+Louisiana Waterthrush,Songbird,Songbird|Warbler,3,Summer
+Yellow-rumped Warbler,Songbird,Songbird|Warbler,5,Migration
+Black-necked Stilt,Shorebird,Shorebird,1,Migration
+Snowy Egret,Wading Bird,Wading Bird|Waterbird,1,Migration/Summer
+Brown Thrasher,Songbird,Songbird,3,Summer
+Veery,Songbird,Songbird|Thrush,3,Migration/Summer
+Northern Waterthrush,Songbird,Songbird|Warbler,3,Migration
+Worm-eating Warbler,Songbird,Songbird|Warbler,2,Summer
+Kentucky Warbler,Songbird,Songbird|Warbler,1,Summer
+Northern Parula,Songbird,Songbird|Warbler,3,Migration
+Scarlet Tanager,Songbird,Songbird,4,Summer
+Golden-winged Warbler,Songbird,Songbird|Warbler,1,Migration
+Tennessee Warbler,Songbird,Songbird|Warbler,3,Migration
+Blue-winged Warbler,Songbird,Songbird|Warbler,3,Summer
+Prothonotary Warbler,Songbird,Songbird|Warbler,2,Summer
+Blackpoll Warbler,Songbird,Songbird|Warbler,3,Migration
+Common Gallinule,Marsh Bird,Marsh Bird|Waterbird|Rail,2,Summer
+Nashville Warbler,Songbird,Songbird|Warbler,3,Migration
+Wilson's Warbler,Songbird,Songbird|Warbler,3,Migration
+Sedge Wren,Marsh Bird,Marsh Bird|Songbird|Wren,1,Summer
+Ovenbird,Songbird,Songbird|Warbler,4,Summer
+Pine Warbler,Songbird,Songbird|Warbler,3,Migration/Summer
+Black-throated Green Warbler,Songbird,Songbird|Warbler,4,Migration/Summer
+Black-billed Cuckoo,Cuckoo,Cuckoo,2,Summer
+Orchard Oriole,Songbird,Songbird|Blackbird & Oriole,3,Summer
+American Bittern,Marsh Bird,Marsh Bird|Wading Bird,1,Migration
+Northern Bobwhite,Gamebird,Gamebird,1,Year-round
+Sanderling,Shorebird,Shorebird,3,Migration
+Swallow-tailed Kite,Bird of Prey,Bird of Prey,1,Migration
+Mourning Warbler,Songbird,Songbird|Warbler,2,Migration/Summer
+American Coot,Marsh Bird,Marsh Bird|Waterbird|Rail,4,Migration/Winter
+Yellow-crowned Night Heron,Wading Bird,Wading Bird|Waterbird,1,Summer
+Philadelphia Vireo,Songbird,Songbird|Vireo,2,Migration
+Sora,Marsh Bird,Marsh Bird|Rail,2,Migration
+Red Knot,Shorebird,Shorebird,1,Migration
+Hooded Merganser,Waterfowl,Waterfowl|Waterbird,3,Migration/Winter
+Western Cattle-Egret,Wading Bird,Wading Bird,1,Migration
+Dark-eyed Junco,Songbird,Songbird|Sparrow,5,Winter
+Peregrine Falcon,Bird of Prey,Bird of Prey,3,Year-round
+Blue-headed Vireo,Songbird,Songbird|Vireo,3,Migration
+Black-bellied Plover,Shorebird,Shorebird,2,Migration
+Ruddy Turnstone,Shorebird,Shorebird,2,Migration
+Grasshopper Sparrow,Songbird,Songbird|Sparrow,2,Summer
+Lesser Black-backed Gull,Gull & Tern,Gull & Tern|Waterbird,2,Winter
+Yellow-breasted Chat,Songbird,Songbird,2,Summer
+Wilson's Phalarope,Shorebird,Shorebird,1,Migration
+White-rumped Sandpiper,Shorebird,Shorebird,2,Migration
+American Woodcock,Shorebird,Shorebird,3,Migration/Summer
+Vesper Sparrow,Songbird,Songbird|Sparrow,2,Migration/Summer
+Dickcissel,Songbird,Songbird,1,Summer
+Prairie Warbler,Songbird,Songbird|Warbler,2,Summer
+Cerulean Warbler,Songbird,Songbird|Warbler,2,Summer
+Northern Shoveler,Waterfowl,Waterfowl|Waterbird,3,Migration
+Northern Pintail,Waterfowl,Waterfowl|Waterbird,2,Migration
+Lesser Scaup,Waterfowl,Waterfowl|Waterbird,3,Migration/Winter
+Black Tern,Gull & Tern,Gull & Tern|Waterbird,1,Migration
+Virginia Rail,Marsh Bird,Marsh Bird|Rail,2,Summer
+Red-necked Phalarope,Shorebird,Shorebird,1,Migration
+Laughing Gull,Gull & Tern,Gull & Tern|Waterbird,1,Migration
+Gadwall,Waterfowl,Waterfowl|Waterbird,3,Migration/Winter
+Purple Finch,Songbird,Songbird|Finch,2,Migration/Winter
+Ring-necked Pheasant,Gamebird,Gamebird,2,Year-round
+American Pipit,Songbird,Songbird,2,Migration
+American Avocet,Shorebird,Shorebird,1,Migration
+Least Bittern,Marsh Bird,Marsh Bird|Wading Bird,1,Summer
+Yellow-bellied Sapsucker,Woodpecker,Woodpecker,3,Migration/Winter
+Hudsonian Whimbrel,Shorebird,Shorebird,1,Migration
+Marbled Godwit,Shorebird,Shorebird,1,Migration
+Redhead,Waterfowl,Waterfowl|Waterbird,2,Migration/Winter
+Ruddy Duck,Waterfowl,Waterfowl|Waterbird,3,Migration
+Upland Sandpiper,Shorebird,Shorebird,1,Summer
+Long-billed Dowitcher,Shorebird,Shorebird,1,Migration
+Dunlin,Shorebird,Shorebird,3,Migration
+Black-bellied Whistling-Duck,Waterfowl,Waterfowl|Waterbird,1,Summer
+Lincoln's Sparrow,Songbird,Songbird|Sparrow,2,Migration
+Alder Flycatcher,Songbird,Songbird|Flycatcher|Aerial Insectivore,2,Migration/Summer
+Henslow's Sparrow,Songbird,Songbird|Sparrow,1,Summer
+Common Loon,Waterbird,Waterbird,3,Migration
+Western Sandpiper,Shorebird,Shorebird,1,Migration
+Bell's Vireo,Songbird,Songbird|Vireo,1,Summer
+Black-throated Blue Warbler,Songbird,Songbird|Warbler,3,Migration
+Brown Creeper,Songbird,Songbird,3,Migration/Winter
+Eastern Whip-poor-will,Nightjar & Swift,Nightjar & Swift|Aerial Insectivore,2,Summer
+Least Tern,Gull & Tern,Gull & Tern|Waterbird,1,Migration
+Lark Sparrow,Songbird,Songbird|Sparrow,1,Migration
+Palm Warbler,Songbird,Songbird|Warbler,4,Migration
+Buff-breasted Sandpiper,Shorebird,Shorebird,1,Migration
+Little Blue Heron,Wading Bird,Wading Bird|Waterbird,1,Migration/Summer
+Sabine's Gull,Gull & Tern,Gull & Tern|Waterbird,1,Migration
+Franklin's Gull,Gull & Tern,Gull & Tern|Waterbird,1,Migration
+American Wigeon,Waterfowl,Waterfowl|Waterbird,3,Migration
+Red Crossbill,Songbird,Songbird|Finch,1,Winter
+Scissor-tailed Flycatcher,Songbird,Songbird|Flycatcher|Aerial Insectivore,1,Migration
+Mississippi Kite,Bird of Prey,Bird of Prey,1,Migration
+Winter Wren,Songbird,Songbird|Wren,3,Migration/Winter
+Eurasian Collared-Dove,Dove & Pigeon,Dove & Pigeon,1,Year-round
+Neotropic Cormorant,Waterbird,Waterbird,1,Migration
+Piping Plover,Shorebird,Shorebird,1,Migration
+Hermit Thrush,Songbird,Songbird|Thrush,3,Migration/Winter
+Cackling Goose,Waterfowl,Waterfowl|Waterbird,2,Migration/Winter
+Pine Siskin,Songbird,Songbird|Finch,2,Migration/Winter
+Red-necked Grebe,Waterbird,Waterbird,1,Migration/Winter
+Red-breasted Merganser,Waterfowl,Waterfowl|Waterbird,4,Migration/Winter
+White-throated Sparrow,Songbird,Songbird|Sparrow,5,Migration/Winter
+Brown Pelican,Waterbird,Waterbird,1,Migration
+Chuck-will's-widow,Nightjar & Swift,Nightjar & Swift|Aerial Insectivore,1,Summer
+Clay-colored Sparrow,Songbird,Songbird|Sparrow,1,Migration
+White-winged Dove,Dove & Pigeon,Dove & Pigeon,1,Migration
+Swainson's Warbler,Songbird,Songbird|Warbler,1,Migration
+Ring-necked Duck,Waterfowl,Waterfowl|Waterbird,3,Migration/Winter
+Yellow-headed Blackbird,Songbird,Songbird|Blackbird & Oriole,1,Migration
+Golden-crowned Kinglet,Songbird,Songbird,4,Migration/Winter
+White-faced Ibis,Wading Bird,Wading Bird,1,Migration
+Western Meadowlark,Songbird,Songbird|Blackbird & Oriole,1,Migration
+Short-eared Owl,Bird of Prey,Bird of Prey|Owl,2,Winter
+Glossy Ibis,Wading Bird,Wading Bird,1,Migration
+Ruby-crowned Kinglet,Songbird,Songbird,4,Migration
+Tricolored Heron,Wading Bird,Wading Bird|Waterbird,1,Migration
+Canvasback,Waterfowl,Waterfowl|Waterbird,2,Migration/Winter
+Snow Goose,Waterfowl,Waterfowl|Waterbird,2,Migration/Winter
+Loggerhead Shrike,Songbird,Songbird,1,Migration
+Gray-cheeked Thrush,Songbird,Songbird|Thrush,2,Migration
+King Rail,Marsh Bird,Marsh Bird|Rail,1,Summer
+White-crowned Sparrow,Songbird,Songbird|Sparrow,4,Migration/Winter
+Northern Saw-whet Owl,Bird of Prey,Bird of Prey|Owl,1,Migration/Winter
+Eurasian Tree Sparrow,Songbird,Songbird,1,Year-round
+Greater White-fronted Goose,Waterfowl,Waterfowl|Waterbird,1,Migration/Winter
+Rusty Blackbird,Songbird,Songbird|Blackbird & Oriole,2,Migration
+Connecticut Warbler,Songbird,Songbird|Warbler,1,Migration
+Ross's Goose,Waterfowl,Waterfowl|Waterbird,1,Migration/Winter
+Golden Eagle,Bird of Prey,Bird of Prey,1,Migration/Winter
+Fox Sparrow,Songbird,Songbird|Sparrow,2,Migration
+Lesser Frigatebird,Waterbird,Waterbird|Seabird,1,Migration
+Orange-crowned Warbler,Songbird,Songbird|Warbler,2,Migration
+Hudsonian Godwit,Shorebird,Shorebird,1,Migration
+Greater Scaup,Waterfowl,Waterfowl|Waterbird,3,Migration/Winter
+Snowy Owl,Bird of Prey,Bird of Prey|Owl,1,Winter
+Western Tanager,Songbird,Songbird,1,Migration
+Nelson's Sparrow,Songbird,Songbird|Sparrow,1,Migration
+Bufflehead,Waterfowl,Waterfowl|Waterbird,4,Migration/Winter
+Western Kingbird,Songbird,Songbird|Flycatcher|Aerial Insectivore,1,Migration
+Tundra Swan,Waterfowl,Waterfowl|Waterbird,2,Migration
+Red-throated Loon,Waterbird,Waterbird,2,Migration/Winter
+Ruff,Shorebird,Shorebird,1,Migration
+Kirtland's Warbler,Songbird,Songbird|Warbler,1,Migration
+Rough-legged Hawk,Bird of Prey,Bird of Prey,2,Winter
+American Tree Sparrow,Songbird,Songbird|Sparrow,4,Winter
+Lapland Longspur,Songbird,Songbird,2,Winter
+Harris's Sparrow,Songbird,Songbird|Sparrow,1,Migration/Winter
+Horned Grebe,Waterbird,Waterbird,2,Migration/Winter
+Ruffed Grouse,Gamebird,Gamebird,1,Year-round
+Iceland Gull,Gull & Tern,Gull & Tern|Waterbird,2,Winter
+Common Goldeneye,Waterfowl,Waterfowl|Waterbird,3,Winter
+Yellow Rail,Marsh Bird,Marsh Bird|Rail,1,Migration
+Eared Grebe,Waterbird,Waterbird,1,Migration
+Brewer's Blackbird,Songbird,Songbird|Blackbird & Oriole,1,Migration
+Redpoll,Songbird,Songbird|Finch,1,Winter
+Swainson's Hawk,Bird of Prey,Bird of Prey,1,Migration
+Glaucous Gull,Gull & Tern,Gull & Tern|Waterbird,2,Winter
+Long-tailed Duck,Waterfowl,Waterfowl|Waterbird,2,Winter
+Surf Scoter,Waterfowl,Waterfowl|Waterbird,2,Migration/Winter
+Say's Phoebe,Songbird,Songbird|Flycatcher|Aerial Insectivore,1,Migration
+Eurasian Wigeon,Waterfowl,Waterfowl|Waterbird,1,Migration/Winter
+White-winged Scoter,Waterfowl,Waterfowl|Waterbird,2,Migration/Winter
+Evening Grosbeak,Songbird,Songbird|Finch,1,Winter
+Harlequin Duck,Waterfowl,Waterfowl|Waterbird,1,Winter
+Sage Thrasher,Songbird,Songbird,1,Migration/Winter
+Lark Bunting,Songbird,Songbird,1,Migration
+Black Scoter,Waterfowl,Waterfowl|Waterbird,2,Migration/Winter
+American Goshawk,Bird of Prey,Bird of Prey,1,Winter
+Black-headed Gull,Gull & Tern,Gull & Tern|Waterbird,1,Winter
+Northern Shrike,Songbird,Songbird,1,Winter
+Snow Bunting,Songbird,Songbird,2,Winter
+Little Gull,Gull & Tern,Gull & Tern|Waterbird,1,Migration/Winter
+Common Gull,Gull & Tern,Gull & Tern|Waterbird,1,Winter
+Black-legged Kittiwake,Gull & Tern,Gull & Tern|Waterbird,1,Migration/Winter
+Varied Thrush,Songbird,Songbird|Thrush,1,Winter
+Brant,Waterfowl,Waterfowl|Waterbird,1,Migration
