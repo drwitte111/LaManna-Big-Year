@@ -136,6 +136,15 @@
   .nav-link.active { color: var(--gold); }
   .nav-right { display: flex; align-items: center; gap: 0.75rem; }
   .nav-user { font-size: 0.8rem; color: rgba(245,237,214,0.5); font-style: italic; }
+  .btn-account {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; flex-shrink: 0;
+    background: none; border: 1px solid rgba(200,149,42,0.4);
+    border-radius: 50%; color: rgba(245,237,214,0.6);
+    cursor: pointer; padding: 0; transition: all 0.15s;
+  }
+  .btn-account:hover { border-color: var(--gold); color: var(--gold); background: rgba(200,149,42,0.12); }
+  .btn-account.active { border-color: var(--gold); color: var(--gold); }
   .btn-logout {
     background: none; border: 1px solid rgba(200,149,42,0.4);
     color: rgba(245,237,214,0.6);
@@ -302,6 +311,11 @@
 
 
   /* CHECKLISTS */
+  .btn-shared { display: inline-flex; align-items: center; margin-top: 0.75rem; background: rgba(245,237,214,0.05); border: 1px solid rgba(200,149,42,0.3); border-radius: var(--radius); padding: 0.5rem 0.9rem; min-height: 40px; color: var(--cream); font-family: 'Source Sans 3', sans-serif; font-size: 0.85rem; cursor: pointer; transition: all 0.15s; }
+  .btn-shared:hover { background: rgba(200,149,42,0.15); border-color: var(--gold); }
+  .cl-controls { display: grid; grid-template-columns: 1fr 260px; gap: 0.6rem; align-items: start; }
+  .cl-controls .search-input { margin-bottom: 1rem; }
+  @media (max-width: 620px) { .cl-controls { grid-template-columns: 1fr; gap: 0; } }
   .cl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0.75rem; }
   .cl-card { background: rgba(245,237,214,0.04); border: 1px solid rgba(200,149,42,0.2); border-radius: 6px; padding: 0.9rem 1rem; cursor: pointer; transition: all 0.15s; }
   .cl-card:hover { background: rgba(200,149,42,0.08); border-color: rgba(200,149,42,0.4); }
@@ -314,7 +328,8 @@
   .cl-bar { height: 6px; background: rgba(245,237,214,0.08); border-radius: 3px; overflow: hidden; }
   .cl-bar-fill { height: 100%; background: var(--sage); border-radius: 3px; transition: width 0.25s; }
   .cl-card.complete .cl-bar-fill { background: var(--gold); }
-  .cl-detail { border: 1px solid rgba(200,149,42,0.35); border-radius: 6px; padding: 1rem; margin-bottom: 1.25rem; background: rgba(245,237,214,0.03); }
+  .cl-card.open { border-color: var(--gold); background: rgba(200,149,42,0.1); }
+  .cl-detail { border: 1px solid rgba(200,149,42,0.35); border-radius: 6px; padding: 1rem; background: rgba(245,237,214,0.03); }
   .cl-detail-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.85rem; }
   .cl-detail-title { font-family: 'Playfair Display', serif; font-size: 1.25rem; color: var(--gold); }
   .cl-finders { font-size: 0.72rem; color: rgba(200,149,42,0.8); }
@@ -402,6 +417,12 @@
   .fl-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 
   /* COUNTDOWN */
+  .cd-banner { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0.25rem 0; }
+  .cd-banner .cd-title { font-size: 1.4rem; }
+  .cd-banner .cd-target-date { margin-bottom: 1.25rem; }
+  .cd-banner .cd-num { font-size: 2.2rem; min-width: 64px; }
+  .cd-banner .cd-sep { font-size: 1.6rem; padding-bottom: 0.9rem; }
+  .cd-banner .cd-sub { margin-bottom: 1.25rem; }
   .cd-phase-label { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(200,149,42,0.6); margin-bottom: 0.75rem; }
   .cd-title { font-family: 'Playfair Display', serif; font-size: 2rem; color: var(--gold); margin-bottom: 0.25rem; }
   .cd-target-date { font-size: 0.82rem; color: rgba(245,237,214,0.35); margin-bottom: 2.5rem; font-style: italic; }
@@ -632,6 +653,26 @@
       <div class="page-subtitle">Share sightings, tips, and trash talk</div>
 	  <a href="https://join.photocircleapp.com/HW2FR8047V" target="_blank" rel="noopener noreferrer" class="photo-circle-link">📸 Share photos on PhotoCircle</a>
     </div>
+    <div class="cd-banner">
+    <div id="cd-phase-label" class="cd-phase-label"></div>
+    <div id="cd-title" class="cd-title"></div>
+    <div id="cd-target-date" class="cd-target-date"></div>
+    <div class="cd-grid" id="cd-grid">
+    <div class="cd-unit"><div class="cd-num" id="cd-days">--</div><div class="cd-label">days</div></div>
+    <div class="cd-sep">:</div>
+    <div class="cd-unit"><div class="cd-num" id="cd-hours">--</div><div class="cd-label">hours</div></div>
+    <div class="cd-sep">:</div>
+    <div class="cd-unit"><div class="cd-num" id="cd-minutes">--</div><div class="cd-label">minutes</div></div>
+    <div class="cd-sep">:</div>
+    <div class="cd-unit"><div class="cd-num" id="cd-seconds">--</div><div class="cd-label">seconds</div></div>
+    </div>
+    <div id="cd-sub" class="cd-sub"></div>
+    <div id="cd-progress-wrap" class="cd-progress-wrap">
+    <div class="cd-progress-track"><div class="cd-progress-bar" id="cd-bar"></div></div>
+    <div class="cd-progress-labels"><span id="cd-prog-start"></span><span id="cd-prog-end"></span></div>
+    </div>
+    </div>
+    <hr class="section-rule">
     <div class="stats-row" id="home-stats"></div>
     <hr class="section-rule">
     <div class="section-label">Post a message</div>
@@ -653,6 +694,9 @@
     <div class="page-header">
       <div class="page-title" id="birds-title">My Birds</div>
       <div class="page-subtitle" id="birds-subtitle">Your 2026-2027 big year list</div>
+      <button class="btn-shared" id="btn-shared" onclick="showPage('shared')">
+        📬 Shared with you<span id="shared-badge" class="tag" style="display:none;">0</span>
+      </button>
     </div>
     <div class="add-bird-form" id="add-bird-section">
       <div class="section-label">Log a bird</div>
@@ -793,6 +837,7 @@
 <div id="page-shared" class="page">
   <div class="content">
     <div class="page-header">
+      <button class="back-btn" onclick="showPage('birds')">← Back to My Birds</button>
       <div class="page-title">Shared With You</div>
       <div class="page-subtitle">Birds family members have sent your way — tap one to log it or dismiss it</div>
     </div>
@@ -819,8 +864,19 @@
       <button type="button" class="detection-btn" id="cl-cat-season" onclick="window.setChecklistCat('season')">By season</button>
       <button type="button" class="detection-btn" id="cl-cat-likelihood" onclick="window.setChecklistCat('likelihood')">By difficulty</button>
     </div>
-    <input class="search-input" id="cl-search" type="text" placeholder="Filter lists…" oninput="window.renderChecklists()">
-    <div id="cl-detail"></div>
+    <div class="cl-controls">
+      <input class="search-input" id="cl-search" type="text" placeholder="Filter lists…" oninput="window.renderChecklists()">
+      <select class="search-input" id="cl-likelihood" onchange="window.renderChecklists()" title="Only count birds of this difficulty">
+        <option value="all">All difficulties</option>
+        <option value="5">●●●●● Everyday Birds only</option>
+        <option value="4">●●●●○ Common with Effort only</option>
+        <option value="3">●●●○○ Worth Searching For only</option>
+        <option value="2">●●○○○ Uncommon only</option>
+        <option value="1">●○○○○ Rarities only</option>
+        <option value="4+">●●●●○ and up (easy half)</option>
+        <option value="3+">●●●○○ and up</option>
+      </select>
+    </div>
     <div id="cl-lists"><div class="empty-state">Loading…</div></div>
   </div>
   <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
@@ -947,29 +1003,6 @@
 </div>
 
 <!-- COUNTDOWN PAGE -->
-<div id="page-countdown" class="page">
-  <div class="content" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;text-align:center;">
-    <div id="cd-phase-label" class="cd-phase-label"></div>
-    <div id="cd-title" class="cd-title"></div>
-    <div id="cd-target-date" class="cd-target-date"></div>
-    <div class="cd-grid" id="cd-grid">
-      <div class="cd-unit"><div class="cd-num" id="cd-days">--</div><div class="cd-label">days</div></div>
-      <div class="cd-sep">:</div>
-      <div class="cd-unit"><div class="cd-num" id="cd-hours">--</div><div class="cd-label">hours</div></div>
-      <div class="cd-sep">:</div>
-      <div class="cd-unit"><div class="cd-num" id="cd-minutes">--</div><div class="cd-label">minutes</div></div>
-      <div class="cd-sep">:</div>
-      <div class="cd-unit"><div class="cd-num" id="cd-seconds">--</div><div class="cd-label">seconds</div></div>
-    </div>
-    <div id="cd-sub" class="cd-sub"></div>
-    <div id="cd-progress-wrap" class="cd-progress-wrap">
-      <div class="cd-progress-track"><div class="cd-progress-bar" id="cd-bar"></div></div>
-      <div class="cd-progress-labels"><span id="cd-prog-start"></span><span id="cd-prog-end"></span></div>
-    </div>
-  </div>
-  <div class="site-footer">LaManna Family Big Year · Powered by Firebase</div>
-</div>
-
 <!-- ADMIN PAGE -->
 <div id="page-admin" class="page">
   <div class="content">
@@ -1118,12 +1151,9 @@ const NAV_ITEMS = [
   { page: 'birds',     label: 'My Birds' },
   { page: 'activity',  label: 'Activity' },
   { page: 'nearby',    label: 'Near You' },
-  { page: 'shared',    label: 'Shared' },
   { page: 'lists',     label: 'Checklists' },
   { page: 'profiles',  label: 'Family' },
   { page: 'compare',   label: 'Compare Profiles' },
-  { page: 'countdown', label: 'Countdown' },
-  { page: 'myprofile', label: 'My Profile' },
 ];
 
 function renderNav(activePage) {
@@ -1131,7 +1161,7 @@ function renderNav(activePage) {
   if (!mount) return;
   const display = allUsersCache[currentUser]?.display || currentUser || '';
   const links = NAV_ITEMS.map(item => {
-    const badge = item.page === 'shared' ? `<span id="nav-badge-shared" class="tag" style="display:none;margin-left:0.3rem;">0</span>` : '';
+    const badge = '';
     return `<button class="nav-link${item.page === activePage ? ' active' : ''}" onclick="window.navAndCloseMenu('${item.page}')">${esc(item.label)}${badge}</button>`;
   }).join('');
   mount.innerHTML = `
@@ -1141,6 +1171,12 @@ function renderNav(activePage) {
       <div class="nav-links" id="nav-links-list">${links}</div>
       <div class="nav-right">
         <span class="nav-user">${esc(display)}</span>
+        <button class="btn-account${activePage === 'myprofile' ? ' active' : ''}" onclick="showPage('myprofile')" title="My Profile" aria-label="My Profile">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="8" r="3.6"></circle>
+            <path d="M4.6 20a7.4 7.4 0 0 1 14.8 0"></path>
+          </svg>
+        </button>
         <button class="btn-logout" onclick="handleLogout()">Sign out</button>
       </div>
     </nav>`;
@@ -1163,7 +1199,7 @@ async function refreshShareBadge() {
   try {
     const snap = await getDocs(collection(db, 'users', currentUser, 'shares'));
     const pending = snap.docs.length;
-    const badge = document.getElementById('nav-badge-shared');
+    const badge = document.getElementById('shared-badge');
     if (!badge) return;
     if (pending > 0) { badge.textContent = String(pending); badge.style.display = 'inline-block'; }
     else badge.style.display = 'none';
@@ -1353,10 +1389,10 @@ async function loadAllUsers() {
 // ── Routing ────────────────────────────────────────────────────────────────
 // Pages that show the standard nav (everything except login/setpw/admin,
 // which have their own flow).
-const NAV_PAGES = new Set(NAV_ITEMS.map(i => i.page).concat(['profile-view']));
+const NAV_PAGES = new Set(NAV_ITEMS.map(i => i.page).concat(['profile-view', 'shared', 'myprofile']));
 
 window.showPage = function(name) {
-  if (cdInterval && name !== 'countdown') { clearInterval(cdInterval); cdInterval = null; }
+  if (cdInterval && name !== 'home') { clearInterval(cdInterval); cdInterval = null; }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pageId = name === 'profile-view' ? 'page-profile-view' : 'page-' + name;
   document.getElementById(pageId).classList.add('active');
@@ -1375,7 +1411,7 @@ window.showPage = function(name) {
 
   renderNav(name);
 
-  if (name === 'home') renderHome();
+  if (name === 'home') { renderHome(); renderCountdown(); }
   if (name === 'birds') renderBirdsPage(currentUser, true);
   if (name === 'activity') renderActivity();
   if (name === 'nearby') renderNearby();
@@ -1384,7 +1420,6 @@ window.showPage = function(name) {
   if (name === 'profiles') renderProfiles();
   if (name === 'compare') renderComparePage();
   if (name === 'myprofile') renderMyProfile();
-  if (name === 'countdown') renderCountdown();
 }
 
 // ── Auth ───────────────────────────────────────────────────────────────────
@@ -3492,12 +3527,22 @@ async function renderProfiles() {
   const lbEl = document.getElementById('leaderboard');
   if (!ranked.length) { lbEl.innerHTML = '<div class="empty-state">No members yet.</div>'; }
   else {
+    // Standard competition ranking: equal points share a place, and the next
+    // person skips the places used up by the tie — 1, 1, 3, 4 rather than
+    // 1, 2, 3, 4. Medal colour follows the shared place, so tied leaders are
+    // both gold.
+    const places = [];
+    ranked.forEach((u, i) => {
+      places[i] = (i > 0 && u.points === ranked[i-1].points) ? places[i-1] : i + 1;
+    });
+
     lbEl.innerHTML = ranked.slice(0,10).map((u, i) => {
-      const rc = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+      const place = places[i];
+      const rc = place === 1 ? 'gold' : place === 2 ? 'silver' : place === 3 ? 'bronze' : '';
       const isYou = u.key === currentUser;
       return `
         <div class="lb-row" onclick="window.viewProfile('${u.key}')">
-          <div class="lb-rank ${rc}">${i+1}</div>
+          <div class="lb-rank ${rc}">${place}</div>
           <div class="lb-avatar">${initials(u.display)}</div>
           <div class="lb-name">${esc(u.display)}${isYou ? '<span class="lb-you">you</span>' : ''}</div>
           <div><span class="lb-count">${u.points}</span><span class="lb-unit"> pts</span></div>
@@ -3961,9 +4006,6 @@ window.setChecklistCat = function(cat) {
 window.toggleChecklist = function(id) {
   checklistState.openId = checklistState.openId === id ? null : id;
   window.renderChecklists();
-  if (checklistState.openId) {
-    document.getElementById('cl-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
 }
 
 async function renderChecklistsPage() {
@@ -3987,52 +4029,63 @@ function findersFor(birdKey) {
 
 window.renderChecklists = function() {
   const listEl = document.getElementById('cl-lists');
-  const detailEl = document.getElementById('cl-detail');
   const statsEl = document.getElementById('cl-stats');
   if (!listEl || !familyIndex) return;
 
+  // The difficulty filter narrows which birds count, so a list's fraction
+  // answers "how am I doing on the easy ones?" rather than on the whole group.
+  const lk = document.getElementById('cl-likelihood')?.value || 'all';
+  const keep = b => lk === 'all'
+    || (lk.endsWith('+') ? b.likelihood >= parseInt(lk, 10) : b.likelihood === Number(lk));
+
   const lists = CHECKLISTS[checklistState.cat] || [];
   const scored = lists.map(l => {
-    const done = l.birds.filter(b => findersFor(b.key).length).length;
-    return { ...l, done, pct: l.birds.length ? Math.round(done / l.birds.length * 100) : 0 };
-  });
+    const birds = l.birds.filter(keep);
+    const done = birds.filter(b => findersFor(b.key).length).length;
+    return { ...l, birds, done, pct: birds.length ? Math.round(done / birds.length * 100) : 0 };
+  }).filter(l => l.birds.length); // a list with nothing at this difficulty says nothing
 
   // Overall coverage is the same number whichever category is on screen.
-  const foundTotal = NEOH_BIRDS.filter(b => findersFor(b.key).length).length;
+  const pool = NEOH_BIRDS.filter(keep);
+  const foundTotal = pool.filter(b => findersFor(b.key).length).length;
   const completeLists = scored.filter(l => l.done === l.birds.length).length;
   const whose = checklistState.scope === 'family' ? 'the family' : 'you';
+  const poolLabel = lk === 'all' ? 'NE Ohio birds' : 'at this difficulty';
   statsEl.innerHTML = `
     <div class="stat-card"><div class="stat-num">${completeLists}/${scored.length}</div><div class="stat-label">Lists complete</div></div>
-    <div class="stat-card"><div class="stat-num">${foundTotal}</div><div class="stat-label">Of ${NEOH_BIRDS.length} NE Ohio birds</div></div>
-    <div class="stat-card"><div class="stat-num">${Math.round(foundTotal / NEOH_BIRDS.length * 100)}%</div><div class="stat-label">Covered by ${whose}</div></div>`;
+    <div class="stat-card"><div class="stat-num">${foundTotal}</div><div class="stat-label">Of ${pool.length} ${poolLabel}</div></div>
+    <div class="stat-card"><div class="stat-num">${pool.length ? Math.round(foundTotal / pool.length * 100) : 0}%</div><div class="stat-label">Covered by ${whose}</div></div>`;
 
   const q = (document.getElementById('cl-search')?.value || '').trim().toLowerCase();
   const shown = q ? scored.filter(l => l.name.toLowerCase().includes(q)) : scored;
 
-  const open = scored.find(l => l.id === checklistState.openId);
-  detailEl.innerHTML = open ? checklistDetailHTML(open) : '';
-
   listEl.innerHTML = shown.length ? `<div class="cl-grid">${shown.map(l => `
-    <div class="cl-card${l.done === l.birds.length ? ' complete' : ''}" onclick="window.toggleChecklist('${jsArg(l.id)}')">
+    <div class="cl-card${l.done === l.birds.length ? ' complete' : ''}${l.id === checklistState.openId ? ' open' : ''}" onclick="window.toggleChecklist('${jsArg(l.id)}')">
       <div class="cl-card-top">
         <span class="cl-card-name">${esc(l.name)}${l.done === l.birds.length ? ' ✓' : ''}</span>
         <span class="cl-card-frac">${l.done}/${l.birds.length}</span>
       </div>
       <div class="cl-card-sub">${esc(l.sub)}</div>
       <div class="cl-bar"><div class="cl-bar-fill" style="width:${l.pct}%"></div></div>
-    </div>`).join('')}</div>`
+    </div>
+    ${l.id === checklistState.openId ? checklistDetailHTML(l) : ''}`).join('')}</div>`
     : '<div class="empty-state">No lists match that filter.</div>';
 }
 
 function checklistDetailHTML(list) {
   const complete = list.done === list.birds.length;
-  // Likeliest birds first — that's the order you'd actually go get them in.
-  const birds = [...list.birds].sort((a, b) =>
-    b.likelihood - a.likelihood || a.name.localeCompare(b.name));
   const isFamily = checklistState.scope === 'family';
 
-  const cards = birds.map(b => {
-    const finders = findersFor(b.key);
+  // Found birds first, then likeliest — so you see what you've got, followed by
+  // the ones worth going after next.
+  const birds = list.birds
+    .map(b => ({ bird: b, finders: findersFor(b.key) }))
+    .sort((x, y) =>
+      (y.finders.length > 0) - (x.finders.length > 0) ||
+      y.bird.likelihood - x.bird.likelihood ||
+      x.bird.name.localeCompare(y.bird.name));
+
+  const cards = birds.map(({ bird: b, finders }) => {
     const got = finders.length > 0;
     const dots = '●'.repeat(b.likelihood) + '○'.repeat(5 - b.likelihood);
     let line;
@@ -4040,7 +4093,7 @@ function checklistDetailHTML(list) {
     else if (isFamily) line = `<div class="cl-finders">✓ ${esc(finders.map(f => f.display).join(', '))}</div>`;
     else line = `<div class="cl-finders">✓ ${finders[0].score >= 2 ? 'Seen' : 'Heard'}</div>`;
     return `
-      <div class="bird-card${got ? ' bird-card-matched' : ''}">
+      <div class="bird-card${got ? ' bird-card-matched' : ''}" style="cursor:pointer;" onclick="window.showBirdImage('${jsArg(b.name)}')" title="Click for a photo">
         <div class="bird-name">${esc(b.name)}</div>
         <div class="cl-likelihood" title="Likelihood in NE Ohio: ${b.likelihood}/5">${dots}</div>
         ${line}
@@ -4048,7 +4101,7 @@ function checklistDetailHTML(list) {
   }).join('');
 
   return `
-    <div class="cl-detail">
+    <div class="cl-detail" style="grid-column:1/-1;">
       <div class="cl-detail-head">
         <div>
           <div class="cl-detail-title">${esc(list.name)}${complete ? ' ✓' : ''}</div>
