@@ -1397,10 +1397,22 @@ function hideLoading() {
   document.getElementById('loading-overlay').classList.add('hidden');
 }
 
-async function loadAllUsers() {
+// Called by nearly every render. The user docs are small and change rarely
+// (a rename, a new account), so a short TTL keeps page switches free instead
+// of costing a read of the whole roster each time. Writes that touch a user
+// call loadAllUsers(true) to refresh immediately.
+let allUsersFetchedAt = 0;
+const ALL_USERS_TTL_MS = 60000;
+
+async function loadAllUsers(force) {
+  if (!force && allUsersFetchedAt && Date.now() - allUsersFetchedAt < ALL_USERS_TTL_MS) return;
   const snap = await getDocs(collection(db, 'users'));
   snap.forEach(d => { allUsersCache[d.id] = d.data(); });
+  allUsersFetchedAt = Date.now();
 }
+
+function invalidateUserCache() { allUsersFetchedAt = 0; }
+window.invalidateUserCache = invalidateUserCache;
 
 // ── Routing ────────────────────────────────────────────────────────────────
 // Pages that show the standard nav (everything except login/setpw/admin,
@@ -1511,6 +1523,7 @@ window.handleSetPassword = async function() {
       joined: serverTimestamp()
     };
     await setDoc(doc(db, 'users', pendingNewUser.key), userData);
+    invalidateUserCache();
     currentUser = pendingNewUser.key;
     allUsersCache[currentUser] = { ...userData, display: pendingNewUser.display };
     sessionStorage.setItem('bigyear_user', currentUser);
@@ -1575,6 +1588,7 @@ window.saveDisplayName = async function() {
   if (!val) { setFeedback('fb-displayname', 'Enter a display name.', true); return; }
   try {
     await updateDoc(doc(db, 'users', currentUser), { display: val });
+    invalidateUserCache();
     allUsersCache[currentUser] = { ...allUsersCache[currentUser], display: val };
     document.getElementById('myprofile-avatar').textContent = initials(val);
     document.getElementById('myprofile-meta').querySelector('.profile-settings-meta-name').textContent = val;
@@ -1587,6 +1601,7 @@ window.saveRealName = async function() {
   const val = document.getElementById('prof-realname').value.trim();
   try {
     await updateDoc(doc(db, 'users', currentUser), { realName: val });
+    invalidateUserCache();
     allUsersCache[currentUser] = { ...allUsersCache[currentUser], realName: val };
     setFeedback('fb-realname', 'Real name updated.', false);
   } catch(e) { setFeedback('fb-realname', 'Save failed.', true); console.error(e); }
@@ -1619,6 +1634,7 @@ window.saveUsername = async function() {
 
     // Copy all data to new doc
     await setDoc(doc(db, 'users', newKey), userData);
+    invalidateUserCache();
 
     // Copy all birds to new user
     const birdsSnap = await getDocs(collection(db, 'users', currentUser, 'birds'));
@@ -1900,6 +1916,7 @@ window.adminSetRealName = async function(userKey) {
   const realName = input.value.trim();
   try {
     await updateDoc(doc(db, 'users', userKey), { realName });
+    invalidateUserCache();
     fb.style.color = '#7ec87e';
     fb.textContent = realName ? 'Real name updated.' : 'Real name cleared.';
     setTimeout(() => { fb.textContent = ''; }, 3000);
@@ -3584,8 +3601,8 @@ window.viewProfile = async function(userKey) {
   const u = allUsersCache[userKey];
   if (!u) return;
 
-  const snap = await getDocs(collection(db, 'users', userKey, 'birds'));
-  const birds = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const byUser = await loadAllBirds();
+  const birds = [...(byUser[userKey] || [])];
   birds.sort((a, b) => (b.addedAt || '') > (a.addedAt || '') ? 1 : -1);
 
   const best = {};
@@ -3601,8 +3618,9 @@ window.viewProfile = async function(userKey) {
   // The viewer's own species, so we can highlight birds they've also found.
   let myLowerSpecies = new Set();
   if (!isMe) {
-    const mySnap = await getDocs(collection(db, 'users', currentUser, 'birds'));
-    mySnap.docs.forEach(d => myLowerSpecies.add(d.data().species.toLowerCase()));
+    (byUser[currentUser] || []).forEach(b => {
+      if (b.species) myLowerSpecies.add(b.species.toLowerCase());
+    });
   }
 
   profileViewState = { birds, myLowerSpecies, isMe, showMissingOnly: false, detFilter: 'all', sortMode: 'time' };
@@ -3774,12 +3792,9 @@ window.renderCompareResults = async function() {
 
   resultsEl.innerHTML = '<div class="empty-state">Loading…</div>';
 
-  const [snapA, snapB] = await Promise.all([
-    getDocs(collection(db, 'users', keyA, 'birds')),
-    getDocs(collection(db, 'users', keyB, 'birds'))
-  ]);
-  const birdsA = snapA.docs.map(d => d.data());
-  const birdsB = snapB.docs.map(d => d.data());
+  const byUser = await loadAllBirds();
+  const birdsA = byUser[keyA] || [];
+  const birdsB = byUser[keyB] || [];
 
   // Best score per species for each person (guards against any duplicate entries).
   function bestScoreMap(birds) {
@@ -3979,16 +3994,14 @@ let familyIndex = null; // Map: speciesKey → [{ key, display, score }]
 
 async function loadFamilyIndex() {
   await loadAllUsers();
-  const people = Object.entries(allUsersCache).filter(([key]) => key !== '__admin__');
-  const snaps = await Promise.all(
-    people.map(([key]) => getDocs(collection(db, 'users', key, 'birds')))
-  );
+  // Read through the shared listener cache rather than re-querying every
+  // collection — this used to cost a full read of everyone's list each time
+  // the tab was opened.
+  const byUser = await loadAllBirds();
   const index = new Map();
-  snaps.forEach((snap, i) => {
-    const [key, u] = people[i];
-    const display = u.display || key;
-    snap.docs.forEach(d => {
-      const b = d.data();
+  Object.entries(byUser).forEach(([key, birds]) => {
+    const display = allUsersCache[key]?.display || key;
+    birds.forEach(b => {
       if (!b.species) return;
       const k = speciesKey(b.species);
       const score = b.score || (b.detection === 'seen' ? 2 : 1);
