@@ -257,8 +257,11 @@
      picker. max-width:none stops any inherited image reset from shrinking it. */
   .avatar-img { position: absolute; display: block; max-width: none; }
   .avatar-img.legacy { position: static; width: 100%; height: 100%; object-fit: cover; }
+  /* Every circle that can hold a photo must be the containing block for it —
+     without position:relative the absolutely-placed image escapes and stretches
+     across the page instead of being clipped to the circle. */
   .lb-avatar, .msg-avatar, .profile-avatar-lg, .profile-avatar-xl,
-  .profile-settings-avatar, .avatar-preview-circle { position: relative; overflow: hidden; }
+  .profile-settings-avatar, .avatar-preview-circle, .btn-account { position: relative; overflow: hidden; }
   .btn-choose-avatar { margin-left: auto; align-self: center; background: rgba(245,237,214,0.05); border: 1px solid rgba(200,149,42,0.3); border-radius: var(--radius); padding: 0.5rem 0.9rem; min-height: 40px; color: var(--cream); font-family: 'Source Sans 3', sans-serif; font-size: 0.82rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
   .btn-choose-avatar:hover { background: rgba(200,149,42,0.15); border-color: var(--gold); }
   .avatar-preview { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem; min-height: 150px; margin-top: 1rem; }
@@ -1344,7 +1347,7 @@ function avatarFrame(u) {
   return {
     x: (x >= 0 && x <= 100) ? x : 50,
     y: (y >= 0 && y <= 100) ? y : 50,
-    zoom: (zoom >= 1 && zoom <= 4) ? zoom : 1,
+    zoom: (zoom >= 0.2 && zoom <= 4) ? zoom : 1,
     aspect: (aspect > 0.05 && aspect < 20) ? aspect : 0,   // 0 = unknown
   };
 }
@@ -1803,8 +1806,9 @@ window.previewAvatarBird = async function() {
       <div class="avatar-preview-name">${esc(species)}</div>
       <div class="avatar-zoom">
         <span>Zoom</span>
-        <input type="range" id="avatar-zoom" min="1" max="3" step="0.05" value="${avatarPos.zoom}"
+        <input type="range" id="avatar-zoom" min="0.4" max="2" step="0.01" value="${avatarPos.zoom}"
                oninput="window.setAvatarZoom(this.value)">
+        <button type="button" class="btn-recenter" onclick="window.fitAvatar()" title="Fit the whole photo in the circle">Fit</button>
         <button type="button" class="btn-recenter" onclick="window.recentreAvatar()">Reset</button>
       </div>
       <div class="avatar-preview-hint" style="margin:0;">Drag the photo to frame it</div>`;
@@ -1840,15 +1844,24 @@ function applyAvatarFrame() {
   img.style.cssText = f.style;
 }
 
-// How much of the photo hangs outside the circle, per axis, as a percentage of
-// the circle. This is the distance a drag has to work with — zero means that
-// axis has nothing hidden to reveal.
+// How far the photo's edges are from the circle's, per axis, as a percentage
+// of the circle. Positive means it spills outside and panning reveals hidden
+// parts; negative means it sits inside with slack, and panning slides it
+// around within the circle. Either way there is room to move — only a side
+// that lands exactly flush has nowhere to go.
 function avatarOverflow() {
   const a = avatarPos.aspect, z = avatarPos.zoom;
   if (!a) return { x: 0, y: 0 };
   const w = a >= 1 ? 100 * z * a : 100 * z;
   const h = a >= 1 ? 100 * z : 100 * z / a;
-  return { x: Math.max(0, w - 100), y: Math.max(0, h - 100) };
+  return { x: w - 100, y: h - 100 };
+}
+
+// The zoom at which the photo's longer side exactly matches the circle, so the
+// whole thing is visible.
+function avatarContainZoom() {
+  const a = avatarPos.aspect;
+  return a ? Math.min(a, 1 / a) : 1;
 }
 
 // Dragging moves the photo; the visible window moves the other way, hence the
@@ -1872,10 +1885,15 @@ function bindAvatarDrag() {
   circle.addEventListener('pointermove', e => {
     if (!dragging) return;
     const over = avatarOverflow();
-    const dxPct = over.x ? (e.clientX - startX) / size * 100 / (over.x / 100) : 0;
-    const dyPct = over.y ? (e.clientY - startY) / size * 100 / (over.y / 100) : 0;
-    avatarPos.x = clamp(originX - dxPct);
-    avatarPos.y = clamp(originY - dyPct);
+    // Dividing by the signed gap makes the photo follow the finger in both
+    // cases: panning a photo bigger than the circle moves the window one way,
+    // sliding a smaller one around moves the photo the other. Anything within
+    // 1% of flush has nowhere to go, and dividing by it would send the drag
+    // flying, so treat that axis as fixed.
+    const shift = (delta, gap) =>
+      Math.abs(gap) < 1 ? 0 : (delta / size * 100) * (100 / gap);
+    avatarPos.x = clamp(originX - shift(e.clientX - startX, over.x));
+    avatarPos.y = clamp(originY - shift(e.clientY - startY, over.y));
     applyAvatarFrame();
   });
 
@@ -1889,15 +1907,27 @@ function bindAvatarDrag() {
 }
 
 window.setAvatarZoom = function(v) {
-  avatarPos.zoom = Math.max(1, Math.min(4, Number(v) || 1));
+  avatarPos.zoom = Math.max(0.2, Math.min(4, Number(v) || 1));
   applyAvatarFrame();
 }
 
 window.recentreAvatar = function() {
   avatarPos.x = 50; avatarPos.y = 50; avatarPos.zoom = 1.2;
-  const slider = document.getElementById('avatar-zoom');
-  if (slider) slider.value = '1.2';
+  syncAvatarZoomSlider();
   applyAvatarFrame();
+}
+
+// Pull all the way back so the entire photo shows inside the circle.
+window.fitAvatar = function() {
+  avatarPos.zoom = avatarContainZoom();
+  avatarPos.x = 50; avatarPos.y = 50;
+  syncAvatarZoomSlider();
+  applyAvatarFrame();
+}
+
+function syncAvatarZoomSlider() {
+  const slider = document.getElementById('avatar-zoom');
+  if (slider) slider.value = String(avatarPos.zoom);
 }
 
 window.saveAvatarBird = async function() {
