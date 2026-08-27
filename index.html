@@ -1339,17 +1339,33 @@ function initials(name) { return String(name||'?').slice(0,2).toUpperCase(); }
 // what makes the picker's 112px preview and a 26px feed avatar show the exact
 // same crop.
 function avatarFrame(u) {
-  const m = String((u && u.avatarPos) || '').trim().match(/^(\d{1,3})% (\d{1,3})%$/);
-  const x = m ? Number(m[1]) : 50;
-  const y = m ? Number(m[2]) : 50;
+  // Pan is a plain offset from centred, in percent of the circle, and may be
+  // negative. Expressing it as a share of the leftover space instead meant the
+  // step size changed with the zoom, and vanished entirely at the zoom where a
+  // side sits exactly flush — which is what made movement feel stuck.
+  const m = String((u && u.avatarOff) || '').trim()
+    .match(/^(-?\d+(?:\.\d+)?)% (-?\d+(?:\.\d+)?)%$/);
+  const ox = m ? Number(m[1]) : 0;
+  const oy = m ? Number(m[2]) : 0;
   const zoom = Number((u && u.avatarZoom) || 1);
   const aspect = Number((u && u.avatarAspect) || 0);
+  const sane = (n, limit) => (isFinite(n) && Math.abs(n) <= limit) ? n : 0;
   return {
-    x: (x >= 0 && x <= 100) ? x : 50,
-    y: (y >= 0 && y <= 100) ? y : 50,
+    ox: sane(ox, 400),
+    oy: sane(oy, 400),
     zoom: (zoom >= 0.2 && zoom <= 4) ? zoom : 1,
     aspect: (aspect > 0.05 && aspect < 20) ? aspect : 0,   // 0 = unknown
+    legacyPos: String((u && u.avatarPos) || '').trim().match(/^\d{1,3}% \d{1,3}%$/)
+      ? String(u.avatarPos).trim() : '50% 50%',
   };
+}
+
+// How big the photo is inside its circle, as a percentage of the circle. The
+// circle is square, so "cover" (zoom 1) puts the photo's shorter side at 100%.
+function avatarSize(aspect, zoom) {
+  return aspect >= 1
+    ? { w: 100 * zoom * aspect, h: 100 * zoom }
+    : { w: 100 * zoom, h: 100 * zoom / aspect };
 }
 
 // Inline style placing the photo inside its circle. The circle is square, so
@@ -1359,13 +1375,11 @@ function avatarFrameStyle(u) {
   const f = avatarFrame(u);
   // Aspect unknown (an avatar saved before framing existed): fall back to the
   // browser's own cover crop rather than guess and distort the photo.
-  if (!f.aspect) return { cls: ' legacy', style: `object-position:${f.x}% ${f.y}%;` };
+  if (!f.aspect) return { cls: ' legacy', style: `object-position:${f.legacyPos};` };
 
-  const w = f.aspect >= 1 ? 100 * f.zoom * f.aspect : 100 * f.zoom;
-  const h = f.aspect >= 1 ? 100 * f.zoom : 100 * f.zoom / f.aspect;
-  const overflowX = w - 100, overflowY = h - 100;
-  const left = -(overflowX * f.x / 100);
-  const top  = -(overflowY * f.y / 100);
+  const { w, h } = avatarSize(f.aspect, f.zoom);
+  const left = (100 - w) / 2 + f.ox;   // centred, then nudged by the offset
+  const top  = (100 - h) / 2 + f.oy;
   const r = n => Math.round(n * 100) / 100;
   return { cls: '', style: `width:${r(w)}%;height:${r(h)}%;left:${r(left)}%;top:${r(top)}%;` };
 }
@@ -1732,16 +1746,13 @@ async function renderMyProfile() {
 // resolved once, here, and only its URL is stored — rendering an avatar never
 // calls Wikipedia, which would mean an API request per avatar per page view.
 let avatarPick = null; // { species, url }
-let avatarPos = { x: 50, y: 50, zoom: 1.2, aspect: 0 }; // framing within the circle
+let avatarPos = { ox: 0, oy: 0, zoom: 1.2, aspect: 0 }; // offset from centred, in percent
 
 window.openAvatarPicker = function() {
   avatarPick = null;
   const current = allUsersCache[currentUser] || {};
   const f = avatarFrame(current);
-  // A little past "just covering" by default, so the photo has room to move on
-  // BOTH axes right away — at exactly cover, a wide photo is flush top and
-  // bottom and there is nothing above or below to drag into view.
-  avatarPos = { x: f.x, y: f.y, zoom: f.zoom > 1 ? f.zoom : 1.2, aspect: f.aspect };
+  avatarPos = { ox: f.ox, oy: f.oy, zoom: f.zoom > 0.2 ? f.zoom : 1.2, aspect: f.aspect };
   showModal(`
     <div class="modal-title">Choose your profile bird</div>
     <div class="modal-body">
@@ -1837,24 +1848,23 @@ function applyAvatarFrame() {
   const img = document.getElementById('avatar-preview-img');
   if (!img) return;
   const f = avatarFrameStyle({
-    avatarPos: `${Math.round(avatarPos.x)}% ${Math.round(avatarPos.y)}%`,
+    avatarOff: `${round2(avatarPos.ox)}% ${round2(avatarPos.oy)}%`,
     avatarZoom: avatarPos.zoom, avatarAspect: avatarPos.aspect,
   });
   img.className = 'avatar-img' + f.cls;
   img.style.cssText = f.style;
 }
 
-// How far the photo's edges are from the circle's, per axis, as a percentage
-// of the circle. Positive means it spills outside and panning reveals hidden
-// parts; negative means it sits inside with slack, and panning slides it
-// around within the circle. Either way there is room to move — only a side
-// that lands exactly flush has nowhere to go.
-function avatarOverflow() {
-  const a = avatarPos.aspect, z = avatarPos.zoom;
+const round2 = n => Math.round(n * 100) / 100;
+
+// The photo may be dragged until its own centre reaches the circle's edge —
+// far enough to put any corner in view, close enough that it can never be
+// flung out of sight entirely.
+function avatarPanLimit() {
+  const a = avatarPos.aspect;
   if (!a) return { x: 0, y: 0 };
-  const w = a >= 1 ? 100 * z * a : 100 * z;
-  const h = a >= 1 ? 100 * z : 100 * z / a;
-  return { x: w - 100, y: h - 100 };
+  const { w, h } = avatarSize(a, avatarPos.zoom);
+  return { x: w / 2, y: h / 2 };
 }
 
 // The zoom at which the photo's longer side exactly matches the circle, so the
@@ -1870,30 +1880,25 @@ function avatarContainZoom() {
 function bindAvatarDrag() {
   const circle = document.getElementById('avatar-preview-circle');
   if (!circle) return;
-  let startX = 0, startY = 0, originX = 50, originY = 50, dragging = false;
+  let startX = 0, startY = 0, originOX = 0, originOY = 0, dragging = false;
   const size = circle.getBoundingClientRect().width || 112;
-  const clamp = v => Math.max(0, Math.min(100, v));
 
   circle.addEventListener('pointerdown', e => {
     dragging = true;
     startX = e.clientX; startY = e.clientY;
-    originX = avatarPos.x; originY = avatarPos.y;
+    originOX = avatarPos.ox; originOY = avatarPos.oy;
     circle.setPointerCapture(e.pointerId);
     e.preventDefault();
   });
 
   circle.addEventListener('pointermove', e => {
     if (!dragging) return;
-    const over = avatarOverflow();
-    // Dividing by the signed gap makes the photo follow the finger in both
-    // cases: panning a photo bigger than the circle moves the window one way,
-    // sliding a smaller one around moves the photo the other. Anything within
-    // 1% of flush has nowhere to go, and dividing by it would send the drag
-    // flying, so treat that axis as fixed.
-    const shift = (delta, gap) =>
-      Math.abs(gap) < 1 ? 0 : (delta / size * 100) * (100 / gap);
-    avatarPos.x = clamp(originX - shift(e.clientX - startX, over.x));
-    avatarPos.y = clamp(originY - shift(e.clientY - startY, over.y));
+    // The photo moves exactly as far as the finger does, at every zoom. No
+    // axis is ever locked, because nothing here divides by the space left over.
+    const limit = avatarPanLimit();
+    const clamp = (v, max) => Math.max(-max, Math.min(max, v));
+    avatarPos.ox = clamp(originOX + (e.clientX - startX) / size * 100, limit.x);
+    avatarPos.oy = clamp(originOY + (e.clientY - startY) / size * 100, limit.y);
     applyAvatarFrame();
   });
 
@@ -1912,7 +1917,7 @@ window.setAvatarZoom = function(v) {
 }
 
 window.recentreAvatar = function() {
-  avatarPos.x = 50; avatarPos.y = 50; avatarPos.zoom = 1.2;
+  avatarPos.ox = 0; avatarPos.oy = 0; avatarPos.zoom = 1.2;
   syncAvatarZoomSlider();
   applyAvatarFrame();
 }
@@ -1920,7 +1925,7 @@ window.recentreAvatar = function() {
 // Pull all the way back so the entire photo shows inside the circle.
 window.fitAvatar = function() {
   avatarPos.zoom = avatarContainZoom();
-  avatarPos.x = 50; avatarPos.y = 50;
+  avatarPos.ox = 0; avatarPos.oy = 0;
   syncAvatarZoomSlider();
   applyAvatarFrame();
 }
@@ -1936,8 +1941,8 @@ window.saveAvatarBird = async function() {
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
   try {
     const frame = {
-      avatarPos: `${Math.round(avatarPos.x)}% ${Math.round(avatarPos.y)}%`,
-      avatarZoom: Math.round(avatarPos.zoom * 100) / 100,
+      avatarOff: `${round2(avatarPos.ox)}% ${round2(avatarPos.oy)}%`,
+      avatarZoom: round2(avatarPos.zoom),
       avatarAspect: Math.round(avatarPos.aspect * 1000) / 1000,
     };
     await updateDoc(doc(db, 'users', currentUser), {
@@ -1959,7 +1964,7 @@ window.saveAvatarBird = async function() {
 
 window.clearAvatarBird = async function() {
   try {
-    const cleared = { avatarBird: '', avatarUrl: '', avatarPos: '', avatarZoom: 1, avatarAspect: 0 };
+    const cleared = { avatarBird: '', avatarUrl: '', avatarOff: '', avatarPos: '', avatarZoom: 1, avatarAspect: 0 };
     await updateDoc(doc(db, 'users', currentUser), cleared);
     invalidateUserCache();
     allUsersCache[currentUser] = { ...allUsersCache[currentUser], ...cleared };
