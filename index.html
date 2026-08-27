@@ -178,6 +178,18 @@
     transition: border-color 0.15s; outline: none;
   }
   .form-input:focus { border-color: var(--gold); }
+  select.form-input, select.search-input {
+    color-scheme: dark;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23C8952A' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 11px;
+    padding-right: 2.25rem;
+  }
+  select.form-input option, select.search-input option,
+  select.form-input optgroup, select.search-input optgroup {
+    background: #1e3520; color: var(--cream);
+  }
+  select.form-input optgroup, select.search-input optgroup { color: rgba(200,149,42,0.75); font-style: normal; }
   /* iOS Safari gives date inputs an intrinsic width that ignores width:100%,
      and grid/flex children default to min-width:auto — together they push the
      input past the edge of the card. */
@@ -868,13 +880,17 @@
       <input class="search-input" id="cl-search" type="text" placeholder="Filter lists…" oninput="window.renderChecklists()">
       <select class="search-input" id="cl-likelihood" onchange="window.renderChecklists()" title="Only count birds of this difficulty">
         <option value="all">All difficulties</option>
-        <option value="5">●●●●● Everyday Birds only</option>
-        <option value="4">●●●●○ Common with Effort only</option>
-        <option value="3">●●●○○ Worth Searching For only</option>
-        <option value="2">●●○○○ Uncommon only</option>
-        <option value="1">●○○○○ Rarities only</option>
-        <option value="4+">●●●●○ and up (easy half)</option>
-        <option value="3+">●●●○○ and up</option>
+        <optgroup label="This tier and easier">
+          <option value="4+">●●●●○ and up — the easy half</option>
+          <option value="3+">●●●○○ and up</option>
+        </optgroup>
+        <optgroup label="Exactly one tier">
+          <option value="5">●●●●● Everyday Birds</option>
+          <option value="4">●●●●○ Common with Effort</option>
+          <option value="3">●●●○○ Worth Searching For</option>
+          <option value="2">●●○○○ Uncommon</option>
+          <option value="1">●○○○○ Rarities</option>
+        </optgroup>
       </select>
     </div>
     <div id="cl-lists"><div class="empty-state">Loading…</div></div>
