@@ -251,6 +251,15 @@
   .lb-rank.gold { color: var(--gold); }
   .lb-rank.silver { color: #aaa; }
   .lb-rank.bronze { color: #cd7f32; }
+  /* Fills whichever circle it sits in, so every avatar size keeps working. */
+  .avatar-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
+  .btn-choose-avatar { margin-left: auto; align-self: center; background: rgba(245,237,214,0.05); border: 1px solid rgba(200,149,42,0.3); border-radius: var(--radius); padding: 0.5rem 0.9rem; min-height: 40px; color: var(--cream); font-family: 'Source Sans 3', sans-serif; font-size: 0.82rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .btn-choose-avatar:hover { background: rgba(200,149,42,0.15); border-color: var(--gold); }
+  .avatar-preview { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem; min-height: 150px; margin-top: 1rem; }
+  .avatar-preview img { width: 112px; height: 112px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(200,149,42,0.5); }
+  .avatar-preview-name { font-size: 0.85rem; color: var(--pale-gold); }
+  .avatar-preview-hint { font-size: 0.78rem; color: rgba(245,237,214,0.35); font-style: italic; text-align: center; }
+  @media (max-width: 520px) { .btn-choose-avatar { margin-left: 0; width: 100%; } }
   .lb-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--sage); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 0.9rem; color: var(--cream); flex-shrink: 0; border: 1px solid rgba(200,149,42,0.3); }
   .lb-name { flex: 1; font-size: 0.95rem; }
   .lb-you { font-size: 0.7rem; color: var(--gold); margin-left: 0.4rem; font-style: italic; }
@@ -959,6 +968,7 @@
     <div class="profile-settings-card">
       <div class="profile-settings-avatar" id="myprofile-avatar"></div>
       <div class="profile-settings-meta" id="myprofile-meta"></div>
+      <button class="btn-choose-avatar" onclick="window.openAvatarPicker()">🐦 Choose profile bird</button>
     </div>
 
     <hr class="section-rule">
@@ -1264,6 +1274,26 @@ function jsArg(str) { return esc(String(str||'').replace(/\\/g, '\\\\').replace(
 
 function initials(name) { return String(name||'?').slice(0,2).toUpperCase(); }
 
+// A user's chosen bird photo, falling back to their initials. The photo is
+// hotlinked from Wikimedia's CDN, so nothing is stored beyond the URL itself.
+function avatarInner(userKey, display) {
+  const u = allUsersCache[userKey] || {};
+  const name = display || u.display || userKey;
+  return u.avatarUrl
+    ? `<img class="avatar-img" src="${esc(u.avatarUrl)}" alt="${esc(name)}" title="${esc(u.avatarBird || name)}" loading="lazy">`
+    : esc(initials(name));
+}
+
+function avatarHTML(userKey, display, cls, extra) {
+  return `<div class="${cls}"${extra || ''}>${avatarInner(userKey, display)}</div>`;
+}
+
+// Wikimedia thumbnail URLs carry their width in the path, so ask for an
+// avatar-sized render instead of the ~320px the summary API hands back.
+function avatarSizedUrl(url, px) {
+  return String(url || '').replace(/\/\d+px-/, '/' + px + 'px-');
+}
+
 // ── SPECIES EMOJI ──────────────────────────────────────────────────────────
 // Picks a per-species emoji instead of a generic bird. Rules are checked in
 // order and the FIRST match wins, so put exceptions above the group they'd
@@ -1556,7 +1586,7 @@ async function renderMyProfile() {
   const display = u.display || currentUser;
   const realName = u.realName || '';
 
-  document.getElementById('myprofile-avatar').textContent = initials(display);
+  document.getElementById('myprofile-avatar').innerHTML = avatarInner(currentUser, display);
   document.getElementById('myprofile-meta').innerHTML = `
     <div class="profile-settings-meta-name">${esc(display)}</div>
     ${realName ? `<div class="profile-settings-meta-sub">${esc(realName)}</div>` : ''}
@@ -1576,6 +1606,99 @@ async function renderMyProfile() {
   });
 }
 
+// ── PROFILE BIRD PICKER ────────────────────────────────────────────────────
+// Pick any bird and its Wikipedia photo becomes your avatar. The photo is
+// resolved once, here, and only its URL is stored — rendering an avatar never
+// calls Wikipedia, which would mean an API request per avatar per page view.
+let avatarPick = null; // { species, url }
+
+window.openAvatarPicker = function() {
+  avatarPick = null;
+  const current = allUsersCache[currentUser] || {};
+  showModal(`
+    <div class="modal-title">Choose your profile bird</div>
+    <div class="modal-body">
+      Pick any bird — its photo from Wikipedia becomes your picture.
+      <div style="position:relative;margin-top:0.75rem;">
+        <input id="avatar-bird-input" class="form-input" type="text" autocomplete="off"
+               placeholder="e.g. Northern Cardinal"
+               value="${esc(current.avatarBird || '')}"
+               oninput="filterSuggestions('avatar-bird-input','avatar-bird-suggestions')"
+               onchange="window.previewAvatarBird()"
+               onkeydown="suggestionKeydown(event,'avatar-bird-input','avatar-bird-suggestions')">
+        <div id="avatar-bird-suggestions" class="suggestions-dropdown"></div>
+      </div>
+      <div class="avatar-preview" id="avatar-preview">
+        <div class="avatar-preview-hint">Start typing a bird name.</div>
+      </div>
+    </div>
+    <div class="modal-actions" style="display:flex;gap:0.5rem;justify-content:flex-end;">
+      ${current.avatarUrl ? '<button class="btn-logout" onclick="window.clearAvatarBird()">Remove</button>' : ''}
+      <button class="btn-logout" onclick="closeModal()">Cancel</button>
+      <button class="btn-add-bird" id="avatar-save-btn" disabled onclick="window.saveAvatarBird()">Use this photo</button>
+    </div>
+  `);
+  if (current.avatarBird) window.previewAvatarBird();
+}
+
+window.previewAvatarBird = async function() {
+  const input = document.getElementById('avatar-bird-input');
+  const box = document.getElementById('avatar-preview');
+  const saveBtn = document.getElementById('avatar-save-btn');
+  if (!input || !box) return;
+  const species = input.value.trim();
+  avatarPick = null;
+  if (saveBtn) saveBtn.disabled = true;
+  if (!species) { box.innerHTML = '<div class="avatar-preview-hint">Start typing a bird name.</div>'; return; }
+
+  box.innerHTML = '<div class="avatar-preview-hint">Looking up a photo…</div>';
+  const result = await fetchBirdImage(species);
+  // The picker may have moved on (or closed) while the lookup was in flight.
+  const live = document.getElementById('avatar-bird-input');
+  if (!live || live.value.trim() !== species) return;
+
+  if (result && result.img) {
+    const url = avatarSizedUrl(result.img, 200);
+    avatarPick = { species, url };
+    box.innerHTML = `
+      <img src="${esc(url)}" alt="${esc(species)}">
+      <div class="avatar-preview-name">${esc(species)}</div>`;
+    if (document.getElementById('avatar-save-btn')) document.getElementById('avatar-save-btn').disabled = false;
+  } else {
+    box.innerHTML = `<div class="avatar-preview-hint">No photo found for &ldquo;${esc(species)}&rdquo;.<br>Try another name.</div>`;
+  }
+}
+
+window.saveAvatarBird = async function() {
+  if (!avatarPick) return;
+  const btn = document.getElementById('avatar-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  try {
+    await updateDoc(doc(db, 'users', currentUser), {
+      avatarBird: avatarPick.species, avatarUrl: avatarPick.url
+    });
+    invalidateUserCache();
+    allUsersCache[currentUser] = {
+      ...allUsersCache[currentUser], avatarBird: avatarPick.species, avatarUrl: avatarPick.url
+    };
+    closeModal();
+    renderMyProfile();
+  } catch(e) {
+    console.error('saveAvatarBird', e);
+    if (btn) { btn.disabled = false; btn.textContent = 'Use this photo'; }
+  }
+}
+
+window.clearAvatarBird = async function() {
+  try {
+    await updateDoc(doc(db, 'users', currentUser), { avatarBird: '', avatarUrl: '' });
+    invalidateUserCache();
+    allUsersCache[currentUser] = { ...allUsersCache[currentUser], avatarBird: '', avatarUrl: '' };
+    closeModal();
+    renderMyProfile();
+  } catch(e) { console.error('clearAvatarBird', e); }
+}
+
 function setFeedback(id, msg, isError) {
   const el = document.getElementById(id);
   el.textContent = msg;
@@ -1590,7 +1713,7 @@ window.saveDisplayName = async function() {
     await updateDoc(doc(db, 'users', currentUser), { display: val });
     invalidateUserCache();
     allUsersCache[currentUser] = { ...allUsersCache[currentUser], display: val };
-    document.getElementById('myprofile-avatar').textContent = initials(val);
+    document.getElementById('myprofile-avatar').innerHTML = avatarInner(currentUser, val);
     document.getElementById('myprofile-meta').querySelector('.profile-settings-meta-name').textContent = val;
     renderNav('myprofile'); // refresh nav-user label
     setFeedback('fb-displayname', 'Display name updated.', false);
@@ -1890,7 +2013,7 @@ async function renderAdmin() {
   listEl.innerHTML = rows.map(u => `
     <div class="admin-user-card" id="acard-${u.id}">
       <div class="admin-user-header">
-        <div class="lb-avatar">${initials(u.display)}</div>
+        ${avatarHTML(u.id, u.display, 'lb-avatar')}
         <div>
           <div class="admin-user-name">${esc(u.display)}</div>
           <div class="admin-user-key">${esc(u.id)} · <span class="admin-bird-count">${u.bCount} species</span></div>
@@ -2144,7 +2267,7 @@ async function renderHome() {
       return `
         <div class="message-card">
           <div class="msg-header">
-            <div class="msg-avatar">${initials(userDisplay)}</div>
+            ${avatarHTML(m.user, userDisplay, 'msg-avatar')}
             <span class="msg-author">${esc(userDisplay)}</span>
             <span class="msg-time">${formatTime(m.ts)}</span>
             ${delBtn}
@@ -2422,7 +2545,7 @@ window.showFinders = function(species) {
   const color = (FINDER_SCALE.find(s => s.n === tier) || {}).color || 'var(--gold)';
   const rows = list.map(f => `
     <button type="button" class="finder-row" onclick="closeModal(); window.viewProfile('${f.key}')" title="View their list">
-      <span class="lb-avatar">${initials(f.name)}</span>
+      ${avatarHTML(f.key, f.name, 'lb-avatar')}
       <span class="finder-row-name">${esc(f.name)}${f.key === currentUser ? '<span class="lb-you">you</span>' : ''}</span>
       <span class="bird-score ${f.score === 2 ? 'seen' : 'heard'}">${f.score === 2 ? '👁 Seen' : '👂 Heard'}</span>
     </button>`).join('');
@@ -2737,7 +2860,9 @@ window.filterSuggestions = function(inputId, boxId) {
 window.selectSuggestion = function(val, inputId, boxId) {
   inputId = inputId || 'bird-species';
   boxId = boxId || 'species-suggestions';
-  document.getElementById(inputId).value = val;
+  const inputEl = document.getElementById(inputId);
+  inputEl.value = val;
+  inputEl.dispatchEvent(new Event('change'));  // let pickers react to a pick
   document.getElementById(boxId).classList.remove('open');
   document.getElementById(boxId).innerHTML = '';
   suggestionIndex = -1;
@@ -3049,7 +3174,7 @@ async function renderSharedPage() {
     return `
       <div class="message-card" style="cursor:pointer;" onclick="window.openShareConfirm('${id}')">
         <div class="msg-header">
-          <div class="msg-avatar">${initials(s.fromDisplay)}</div>
+          ${avatarHTML(s.fromUser, s.fromDisplay, 'msg-avatar')}
           <span class="msg-author">${esc(s.fromDisplay)}</span>
           <span class="msg-time">${formatTime(s.ts)}</span>
         </div>
@@ -3287,7 +3412,7 @@ window.renderActivityCards = function(keepPaging) {
     return `
       <div class="message-card${tier ? ` tier-f${tier}` : ''}">
         <div class="msg-header">
-          <div class="msg-avatar" style="cursor:pointer;" onclick="window.viewProfile('${it.key}')">${initials(it.display)}</div>
+          ${avatarHTML(it.key, it.display, 'msg-avatar', ` style="cursor:pointer;" onclick="window.viewProfile(\'${it.key}\')"`)}
           <span class="msg-author" style="cursor:pointer;" onclick="window.viewProfile('${it.key}')">${esc(it.display)}${it.realName ? ` <span style="font-weight:400;color:rgba(245,237,214,0.4);">• ${esc(it.realName)}</span>` : ''}</span>
           <span class="msg-time">${wasUpdated ? 'updated ' : ''}${formatTime(displayTs)}</span>
         </div>
@@ -3576,7 +3701,7 @@ async function renderProfiles() {
       return `
         <div class="lb-row" onclick="window.viewProfile('${u.key}')">
           <div class="lb-rank ${rc}">${place}</div>
-          <div class="lb-avatar">${initials(u.display)}</div>
+          ${avatarHTML(u.key, u.display, 'lb-avatar')}
           <div class="lb-name">${esc(u.display)}${isYou ? '<span class="lb-you">you</span>' : ''}</div>
           <div><span class="lb-count">${u.points}</span><span class="lb-unit"> pts</span></div>
         </div>`;
@@ -3585,7 +3710,7 @@ async function renderProfiles() {
 
   document.getElementById('profiles-grid').innerHTML = ranked.map(u => `
     <div class="profile-card" onclick="window.viewProfile('${u.key}')">
-      <div class="profile-avatar-lg">${initials(u.display)}</div>
+      ${avatarHTML(u.key, u.display, 'profile-avatar-lg')}
       <div class="profile-name">${esc(u.display)}</div>
       <div class="profile-count">${u.points}</div>
       <div class="profile-count-label">points · ${u.speciesCount} species</div>
@@ -3628,7 +3753,7 @@ window.viewProfile = async function(userKey) {
   document.getElementById('profile-view-content').innerHTML = `
     <button class="back-btn" onclick="showPage('profiles')">← Back to family</button>
     <div class="profile-hero">
-      <div class="profile-avatar-xl">${initials(u.display)}</div>
+      ${avatarHTML(userKey, u.display, 'profile-avatar-xl')}
       <div>
         <div class="profile-info-name">${esc(u.display)}${isMe ? '<span class="tag">You</span>' : ''}</div>
         <div class="profile-info-sub">${u.realName ? esc(u.realName) + ' · ' : ''}Member of the LaManna Big Year</div>
