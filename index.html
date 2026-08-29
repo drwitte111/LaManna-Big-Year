@@ -2661,17 +2661,25 @@ function csvCell(val) {
 // first. Only things somebody would actually SEE belong here — a new screen, a
 // moved button, a bug they hit. Changes to how data loads or is cached don't.
 //
-// To add one: put a new object at the TOP of this list with today's date. The
-// "New" dot on the Board keys off the newest date here, so anyone who has
-// already read down to that date stops being nudged.
+// Each release gets its OWN entry and is never appended to an earlier one —
+// the point of the timestamp is that two changes on the same day are still two
+// changes. Put the new object at the TOP with the current Eastern date and time
+// as "YYYY-MM-DD HH:MM". The "New" marker keys off the newest stamp, so reading
+// the panel clears it until the next entry appears.
 const APP_UPDATES = [
   {
-    date: '2026-08-29',
-    title: 'Checklists, profile pictures, reactions, and a shorter menu',
+    at: '2026-08-29 14:12',
+    title: 'React to sightings',
+    items: [
+      'On the Activity tab, tap the <b>+</b> under any bird to add an emoji — 👍 ❤️ 🔥 👏 😮 🤩 🏆 👀. Tap a reaction again to take it back, and hover one to see who reacted.',
+    ],
+  },
+  {
+    at: '2026-08-29 13:55',
+    title: 'Checklists, profile pictures, and a shorter menu',
     items: [
       '<b>New Checklists tab.</b> Northeast Ohio\'s birds sorted into groups — owls, warblers, ducks, woodpeckers — plus by season and by difficulty. Switch between <b>Just me</b> and <b>Whole family</b> to see whether we\'ve finished a list together, and filter to the easy birds to see how you\'re doing on those alone.',
       '<b>Profile pictures.</b> My Profile → Choose profile bird. Name any bird to use its photo, or paste a link to your own image, then drag and zoom to frame it inside the circle.',
-      '<b>React to sightings.</b> On the Activity tab, tap the <b>+</b> under any bird to add an emoji — 👍 ❤️ 🔥 👏 😮 🤩 🏆 👀. Tap a reaction again to take it back, and hover one to see who reacted.',
       '<b>Countdown moved onto the Board</b> instead of having its own tab.',
       '<b>Shared with you is now a button on My Birds</b>, with a badge when someone has sent you something.',
       '<b>My Profile is now the round icon</b> next to Sign out — and it shows your bird once you pick one.',
@@ -2684,7 +2692,7 @@ const APP_UPDATES = [
     ],
   },
   {
-    date: '2026-08-29',
+    at: '2026-08-29 13:50',
     title: 'Everything the app does',
     items: [
       '<b>Board.</b> The countdown to the end of the Big Year, family totals, and a message board for sightings, tips and trash talk.',
@@ -2705,7 +2713,7 @@ const APP_UPDATES = [
 const UPDATES_SEEN_KEY = 'bigyear_updates_seen';
 
 function latestUpdateDate() {
-  return APP_UPDATES.length ? APP_UPDATES[0].date : '';
+  return APP_UPDATES.length ? APP_UPDATES[0].at : '';
 }
 
 function hasUnseenUpdates() {
@@ -2717,12 +2725,20 @@ function markUpdatesSeen() {
   try { localStorage.setItem(UPDATES_SEEN_KEY, latestUpdateDate()); } catch(e) {}
 }
 
-// "29 August 2026" reads better than a bare 2026-08-29 to everyone but a
-// programmer. Parsed as UTC so the date can't slip a day depending on timezone.
-function formatUpdateDate(iso) {
-  const d = new Date(iso + 'T00:00:00Z');
-  return isNaN(d) ? iso : d.toLocaleDateString('en-US',
+// Stamps are written as "YYYY-MM-DD HH:MM" in Eastern time, the same clock the
+// rest of the app runs on. They are formatted exactly as written rather than
+// converted, so an update reads the same whoever opens it — and two updates on
+// the same day stay tellable apart by their time.
+function formatUpdateDate(stamp) {
+  const m = String(stamp || '').match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
+  if (!m) return String(stamp || '');
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0)));
+  if (isNaN(d)) return String(stamp);
+  const day = d.toLocaleDateString('en-US',
     { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  if (!m[4]) return day;
+  return day + ' · ' + d.toLocaleTimeString('en-US',
+    { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' });
 }
 
 function renderUpdatesRow() {
@@ -2731,7 +2747,7 @@ function renderUpdatesRow() {
   const unseen = hasUnseenUpdates();
   el.innerHTML = `
     <span class="updates-row-label">📋 What&rsquo;s new${unseen ? '<span class="tag">New</span>' : ''}</span>
-    <span class="updates-row-sub">${esc(formatUpdateDate(latestUpdateDate()))}</span>
+    <span class="updates-row-sub">${esc(formatUpdateDate(latestUpdateDate().slice(0, 10)))}</span>
     <span class="updates-chevron">›</span>`;
 }
 
@@ -2741,7 +2757,7 @@ window.showUpdates = function() {
     <div class="modal-body">
       ${APP_UPDATES.map(u => `
         <div class="update-entry">
-          <div class="update-date">${esc(formatUpdateDate(u.date))}</div>
+          <div class="update-date">${esc(formatUpdateDate(u.at))}</div>
           <div class="update-title">${esc(u.title)}</div>
           <ul class="update-list">${u.items.map(i => `<li>${i}</li>`).join('')}</ul>
         </div>`).join('')}
