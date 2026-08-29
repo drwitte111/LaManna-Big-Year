@@ -193,8 +193,10 @@
   /* iOS Safari gives date inputs an intrinsic width that ignores width:100%,
      and grid/flex children default to min-width:auto — together they push the
      input past the edge of the card. */
-  .form-input[type="date"] { -webkit-appearance: none; appearance: none; display: block; min-width: 0; max-width: 100%; }
-  .add-bird-grid > * { min-width: 0; }
+  .form-input[type="date"], .form-input[type="datetime-local"], .form-input[type="time"] { -webkit-appearance: none; appearance: none; display: block; min-width: 0; max-width: 100%; }
+  /* Grid and flex children default to min-width:auto, so an intrinsically wide
+     input pushes its whole row past the edge instead of shrinking. */
+  .add-bird-grid > *, .settings-row > * { min-width: 0; }
   .form-input::placeholder { color: rgba(245,237,214,0.25); }
   .btn-primary {
     width: 100%; background: var(--gold); border: none;
@@ -279,12 +281,26 @@
   .btn-recenter:hover { color: var(--gold); border-color: var(--gold); }
   .avatar-preview-name { font-size: 0.85rem; color: var(--pale-gold); }
   .avatar-preview-hint { font-size: 0.78rem; color: rgba(245,237,214,0.35); font-style: italic; text-align: center; }
-  @media (max-width: 520px) { .btn-choose-avatar { margin-left: 0; width: 100%; } }
+  @media (max-width: 520px) { .btn-choose-avatar { margin-left: 0; flex: 1 0 100%; } }
   .lb-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--sage); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 0.9rem; color: var(--cream); flex-shrink: 0; border: 1px solid rgba(200,149,42,0.3); }
   .lb-name { flex: 1; font-size: 0.95rem; }
   .lb-you { font-size: 0.7rem; color: var(--gold); margin-left: 0.4rem; font-style: italic; }
   .lb-count { font-family: 'Playfair Display', serif; font-size: 1.1rem; color: var(--gold); }
   .lb-unit { font-size: 0.7rem; color: rgba(245,237,214,0.35); margin-left: 2px; }
+
+  /* UPDATES */
+  .updates-row { display: flex; align-items: center; gap: 0.6rem; width: 100%; background: rgba(245,237,214,0.04); border: 1px solid rgba(200,149,42,0.25); border-radius: 6px; padding: 0.7rem 1rem; min-height: 44px; color: var(--cream); font-family: 'Source Sans 3', sans-serif; font-size: 0.88rem; cursor: pointer; text-align: left; transition: all 0.15s; }
+  .updates-row:hover { background: rgba(200,149,42,0.1); border-color: rgba(200,149,42,0.5); }
+  .updates-row-label { flex: 1; }
+  .updates-row-sub { font-size: 0.72rem; color: rgba(245,237,214,0.35); font-style: italic; }
+  .updates-chevron { color: rgba(200,149,42,0.5); flex-shrink: 0; }
+  .update-entry { padding-bottom: 1.1rem; margin-bottom: 1.1rem; border-bottom: 1px solid rgba(200,149,42,0.15); }
+  .update-entry:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .update-date { font-family: 'Source Sans 3', sans-serif; font-size: 0.68rem; letter-spacing: 0.09em; text-transform: uppercase; color: rgba(200,149,42,0.7); }
+  .update-title { font-family: 'Playfair Display', serif; font-size: 1.05rem; color: var(--pale-gold); margin: 0.15rem 0 0.5rem; }
+  .update-list { margin: 0; padding-left: 1.1rem; }
+  .update-list li { font-size: 0.86rem; color: rgba(245,237,214,0.75); line-height: 1.5; margin-bottom: 0.35rem; }
+  .update-list li b { color: var(--cream); font-weight: 600; }
 
   /* MESSAGES */
   .post-input-area { background: rgba(245,237,214,0.04); border: 1px solid rgba(200,149,42,0.25); border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem; }
@@ -301,7 +317,7 @@
   .msg-author { font-size: 0.85rem; font-weight: 600; color: var(--pale-gold); }
   .msg-time { font-size: 0.72rem; color: rgba(245,237,214,0.3); margin-left: auto; }
   .msg-text { font-size: 0.9rem; line-height: 1.55; color: rgba(245,237,214,0.85); }
-  .msg-delete { background: none; border: none; color: rgba(200,149,42,0.2); cursor: pointer; font-size: 0.75rem; padding: 0 0.25rem; transition: color 0.15s; }
+  .msg-delete { background: none; border: none; color: rgba(200,149,42,0.2); cursor: pointer; font-size: 0.75rem; line-height: 1; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0; margin: -0.4rem -0.5rem -0.4rem 0; transition: color 0.15s; }
   .msg-delete:hover { color: var(--rust); }
   .empty-state { text-align: center; padding: 3rem 1rem; color: rgba(245,237,214,0.3); font-style: italic; font-size: 0.9rem; }
 
@@ -317,12 +333,15 @@
   .bird-card-matched .bird-name { color: var(--pale-gold); }
   .bird-name { font-size: 0.9rem; font-weight: 600; color: var(--cream); }
   /* Keep the name row and the last text line clear of the corner buttons */
-  .bird-card:has(.bird-del) .bird-name { padding-right: 1.1rem; }
-  .bird-card:has(.bird-share) > *:last-child { padding-right: 1.4rem; }
+  .bird-card:has(.bird-del) .bird-name { padding-right: 1.9rem; }
+  .bird-card:has(.bird-share) > *:last-child { padding-right: 2rem; }
   .bird-date { font-size: 0.72rem; color: rgba(245,237,214,0.35); }
   .bird-location { font-size: 0.75rem; color: rgba(200,149,42,0.7); }
   .bird-note { font-size: 0.75rem; color: rgba(245,237,214,0.45); font-style: italic; margin-top: 0.15rem; }
-  .bird-del { position: absolute; top: 0.5rem; right: 0.5rem; background: none; border: none; color: rgba(200,149,42,0.2); cursor: pointer; font-size: 0.8rem; transition: color 0.15s; }
+  /* Icon buttons keep their small glyph but carry a 32px hit area — a 10px
+     wide delete is both hard to hit deliberately and easy to hit by accident,
+     which for a destructive control is the worse half. */
+  .bird-del { position: absolute; top: 0.05rem; right: 0.05rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: none; border: none; color: rgba(200,149,42,0.2); cursor: pointer; font-size: 0.8rem; line-height: 1; padding: 0; transition: color 0.15s; }
   .bird-del:hover { color: var(--rust); }
   .search-input { width: 100%; background: rgba(245,237,214,0.05); border: 1px solid rgba(200,149,42,0.25); border-radius: var(--radius); padding: 0.55rem 0.85rem; color: var(--cream); font-family: 'Source Sans 3', sans-serif; font-size: 0.9rem; outline: none; transition: border-color 0.15s; margin-bottom: 1rem; }
   .search-input:focus { border-color: var(--gold); }
@@ -422,7 +441,7 @@
   .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.5rem; flex-shrink: 0; flex-wrap: wrap; }
 
   /* BIRD CARD SHARE BUTTON — bottom-right, clear of the name row's badges */
-  .bird-share { position: absolute; bottom: 0.45rem; right: 0.5rem; background: none; border: none; color: rgba(200,149,42,0.3); cursor: pointer; font-size: 0.85rem; line-height: 1; padding: 0.1rem; transition: color 0.15s; }
+  .bird-share { position: absolute; bottom: 0.05rem; right: 0.05rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: none; border: none; color: rgba(200,149,42,0.3); cursor: pointer; font-size: 0.85rem; line-height: 1; padding: 0; transition: color 0.15s; }
   .bird-share:hover { color: var(--gold); }
   .suggestions-dropdown.open { display: block; }
   .suggestion-item { padding: 0.5rem 0.85rem; font-size: 0.88rem; cursor: pointer; color: var(--cream); transition: background 0.1s; }
@@ -504,8 +523,9 @@
   .cd-ended { font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--gold); margin: 2rem 0 0.5rem; }
 
   /* PROFILE SETTINGS */
-  .profile-settings-card { display: flex; align-items: center; gap: 1.25rem; padding: 1.25rem; background: rgba(245,237,214,0.04); border: 1px solid rgba(200,149,42,0.2); border-radius: 6px; margin-bottom: 1.5rem; }
+  .profile-settings-card { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; padding: 1.25rem; background: rgba(245,237,214,0.04); border: 1px solid rgba(200,149,42,0.2); border-radius: 6px; margin-bottom: 1.5rem; }
   .profile-settings-avatar { width: 60px; height: 60px; border-radius: 50%; background: var(--sage); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 1.4rem; color: var(--cream); border: 2px solid rgba(200,149,42,0.3); flex-shrink: 0; }
+  .profile-settings-meta { min-width: 0; flex: 1 1 auto; overflow-wrap: anywhere; }
   .profile-settings-meta-name { font-family: 'Playfair Display', serif; font-size: 1.2rem; color: var(--gold); }
   .profile-settings-meta-sub { font-size: 0.8rem; color: rgba(245,237,214,0.4); margin-top: 0.15rem; font-style: italic; }
   .settings-section { margin-bottom: 0.5rem; }
@@ -737,6 +757,8 @@
     <div class="cd-progress-labels"><span id="cd-prog-start"></span><span id="cd-prog-end"></span></div>
     </div>
     </div>
+    <hr class="section-rule">
+    <button class="updates-row" id="updates-row" onclick="window.showUpdates()"></button>
     <hr class="section-rule">
     <div class="stats-row" id="home-stats"></div>
     <hr class="section-rule">
@@ -1084,7 +1106,7 @@
     <div class="section-label">Big Year window</div>
     <div class="admin-user-card" style="margin-bottom:1.5rem;">
       <p class="settings-hint" style="margin-bottom:1rem;">Set the start and end dates for the Big Year. Times are entered in EDT (Eastern Daylight Time). Bird log entries are only allowed between these two moments.</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+      <div class="add-bird-grid" style="margin-bottom:1rem;">
         <div>
           <label class="form-label">Start date &amp; time (EDT)</label>
           <input id="admin-by-start" class="form-input" type="datetime-local">
@@ -1647,7 +1669,7 @@ window.showPage = function(name) {
 
   renderNav(name);
 
-  if (name === 'home') { renderHome(); renderCountdown(); }
+  if (name === 'home') { renderHome(); renderCountdown(); renderUpdatesRow(); }
   if (name === 'birds') renderBirdsPage(currentUser, true);
   if (name === 'activity') renderActivity();
   if (name === 'nearby') renderNearby();
@@ -2240,7 +2262,7 @@ function adminBirdEditHTML(key) {
   return `
     <div class="admin-user-card" style="padding:0.75rem 1rem;margin-bottom:0.5rem;" id="abrow-${key}">
       <div class="admin-user-key" style="margin-bottom:0.5rem;">${esc(b.display)}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.5rem;">
+      <div class="add-bird-grid" style="gap:0.5rem;margin-bottom:0.5rem;">
         <div style="position:relative;">
           <input class="form-input" id="abe-species-${key}" value="${esc(b.species)}" placeholder="Species"
             oninput="filterSuggestions('abe-species-${key}','abe-species-suggestions-${key}')"
@@ -2616,6 +2638,101 @@ window.adminExportCSV = async function() {
 function csvCell(val) {
   const s = String(val).replace(/"/g, '""');
   return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s}"` : s;
+}
+
+// ── UPDATES ────────────────────────────────────────────────────────────────
+// What's changed, in the family's language rather than the code's. Newest
+// first. Only things somebody would actually SEE belong here — a new screen, a
+// moved button, a bug they hit. Changes to how data loads or is cached don't.
+//
+// To add one: put a new object at the TOP of this list with today's date. The
+// "New" dot on the Board keys off the newest date here, so anyone who has
+// already read down to that date stops being nudged.
+const APP_UPDATES = [
+  {
+    date: '2026-08-29',
+    title: 'Checklists, profile pictures, and a shorter menu',
+    items: [
+      '<b>New Checklists tab.</b> Northeast Ohio\'s birds sorted into groups — owls, warblers, ducks, woodpeckers — plus by season and by difficulty. Switch between <b>Just me</b> and <b>Whole family</b> to see whether we\'ve finished a list together, and filter to the easy birds to see how you\'re doing on those alone.',
+      '<b>Profile pictures.</b> My Profile → Choose profile bird. Name any bird to use its photo, or paste a link to your own image, then drag and zoom to frame it inside the circle.',
+      '<b>Countdown moved onto the Board</b> instead of having its own tab.',
+      '<b>Shared with you is now a button on My Birds</b>, with a badge when someone has sent you something.',
+      '<b>My Profile is now the round icon</b> next to Sign out — and it shows your bird once you pick one.',
+      '<b>You stay signed in</b> on each phone or laptop until you press Sign out on it.',
+      'Tap any bird in a checklist for its photo.',
+      'Fixed: the &ldquo;last bird&rdquo; times on Family were off by a day, and evening sightings could be saved with tomorrow\'s date.',
+      'Fixed: ties on the leaderboard now share a place — 1, 1, 3 rather than 1, 2, 3.',
+      'Fixed: photo pop-ups that were too tall to close on a phone. Every pop-up now has an ✕ and closes with Escape.',
+      'Fixed: several things overflowing off the edge of the screen on Android.',
+    ],
+  },
+  {
+    date: '2026-08-29',
+    title: 'Everything the app does',
+    items: [
+      '<b>Board.</b> The countdown to the end of the Big Year, family totals, and a message board for sightings, tips and trash talk.',
+      '<b>My Birds.</b> Log a bird with species autocomplete, a location, a date and a note. Say whether you <b>saw</b> it (2 points) or <b>heard</b> it (1 point). Edit or delete anything you\'ve logged, and share a sighting with someone else in the family.',
+      '<b>Activity.</b> Every bird the family logs, newest first, with a count of how many people have found each species.',
+      '<b>Near You.</b> Birds the family has found close to where you are, with a radius you can widen or narrow.',
+      '<b>Checklists.</b> Regional bird lists to complete, on your own or together.',
+      '<b>Family.</b> The leaderboard by points, plus a card for everyone. Tap a person to see their full list and what you both have.',
+      '<b>Compare Profiles.</b> Two people side by side — what they share, what\'s unique to each, and where your scores differ.',
+      '<b>Shared with you.</b> Birds someone has sent your way; log them to your own list or dismiss them.',
+      '<b>My Profile.</b> Change your display name, your real name, the name you sign in with, your password, and your profile picture.',
+      'Tap any bird name anywhere in the app for a photo and a short description.',
+      'Scores: a species counts once, at its best score. Seeing a bird you had only heard upgrades it from 1 point to 2.',
+    ],
+  },
+];
+
+const UPDATES_SEEN_KEY = 'bigyear_updates_seen';
+
+function latestUpdateDate() {
+  return APP_UPDATES.length ? APP_UPDATES[0].date : '';
+}
+
+function hasUnseenUpdates() {
+  try { return localStorage.getItem(UPDATES_SEEN_KEY) !== latestUpdateDate(); }
+  catch(e) { return false; }   // private mode: don't nag on every load
+}
+
+function markUpdatesSeen() {
+  try { localStorage.setItem(UPDATES_SEEN_KEY, latestUpdateDate()); } catch(e) {}
+}
+
+// "29 August 2026" reads better than a bare 2026-08-29 to everyone but a
+// programmer. Parsed as UTC so the date can't slip a day depending on timezone.
+function formatUpdateDate(iso) {
+  const d = new Date(iso + 'T00:00:00Z');
+  return isNaN(d) ? iso : d.toLocaleDateString('en-US',
+    { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+}
+
+function renderUpdatesRow() {
+  const el = document.getElementById('updates-row');
+  if (!el) return;
+  const unseen = hasUnseenUpdates();
+  el.innerHTML = `
+    <span class="updates-row-label">📋 What&rsquo;s new${unseen ? '<span class="tag">New</span>' : ''}</span>
+    <span class="updates-row-sub">${esc(formatUpdateDate(latestUpdateDate()))}</span>
+    <span class="updates-chevron">›</span>`;
+}
+
+window.showUpdates = function() {
+  showModal(`
+    <div class="modal-title">What&rsquo;s new</div>
+    <div class="modal-body">
+      ${APP_UPDATES.map(u => `
+        <div class="update-entry">
+          <div class="update-date">${esc(formatUpdateDate(u.date))}</div>
+          <div class="update-title">${esc(u.title)}</div>
+          <ul class="update-list">${u.items.map(i => `<li>${i}</li>`).join('')}</ul>
+        </div>`).join('')}
+    </div>
+    <div class="modal-actions"><button class="btn-logout" onclick="closeModal()">Close</button></div>
+  `);
+  markUpdatesSeen();
+  renderUpdatesRow();   // drop the New dot straight away
 }
 
 // ── HOME ───────────────────────────────────────────────────────────────────
