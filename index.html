@@ -1289,8 +1289,47 @@ async function refreshShareBadge() {
   } catch(e) { console.error('refreshShareBadge', e); }
 }
 
+// ── Staying signed in ──────────────────────────────────────────────────────
+// Kept in localStorage, so closing the tab — or the whole browser — doesn't
+// sign you out. It's per-device by nature: signing in on a phone leaves the
+// laptop as it was, and signing out clears only the device you're on.
+//
+// Only the account name is stored, never the password. Everything else is
+// re-read from Firestore on load, so a stale name simply falls back to the
+// login screen.
+//
+// Every access is wrapped: storage throws outright in some private-browsing
+// modes, and the app should still work for that visit rather than fail to boot.
+const SESSION_KEY = 'bigyear_user';
+
+function readSignedInUser() {
+  try {
+    const remembered = localStorage.getItem(SESSION_KEY);
+    if (remembered) return remembered;
+    // Anyone signed in under the old tab-only behaviour is carried over, so
+    // this change doesn't sign the family out once on its way in.
+    const legacy = sessionStorage.getItem(SESSION_KEY);
+    if (legacy && legacy !== '__admin__') localStorage.setItem(SESSION_KEY, legacy);
+    return legacy || null;
+  } catch(e) { return null; }
+}
+
+function rememberSignedInUser(key) {
+  try {
+    // The admin view is deliberately NOT remembered across restarts. It's an
+    // elevated screen and this is a shared family tablet as often as not.
+    if (key === '__admin__') sessionStorage.setItem(SESSION_KEY, key);
+    else localStorage.setItem(SESSION_KEY, key);
+  } catch(e) { /* private mode — signed in for this visit only */ }
+}
+
+function forgetSignedInUser() {
+  try { localStorage.removeItem(SESSION_KEY); } catch(e) {}
+  try { sessionStorage.removeItem(SESSION_KEY); } catch(e) {}
+}
+
 // ── State ──────────────────────────────────────────────────────────────────
-let currentUser = sessionStorage.getItem('bigyear_user') || null;
+let currentUser = readSignedInUser();
 let pendingNewUser = null;
 let msgUnsubscribe = null;
 let birdViewUser = null;
@@ -1632,7 +1671,7 @@ window.handleLogin = async function() {
   // Admin shortcut — never touches Firestore
   if (username.toLowerCase() === ADMIN_USER && password === ADMIN_PW) {
     currentUser = '__admin__';
-    sessionStorage.setItem('bigyear_user', '__admin__');
+    rememberSignedInUser('__admin__');
     document.getElementById('login-username').value = '';
     document.getElementById('login-password').value = '';
     showPage('admin');
@@ -1651,7 +1690,7 @@ window.handleLogin = async function() {
       if (data.password === password) {
         currentUser = userKey;
         allUsersCache[userKey] = data;
-        sessionStorage.setItem('bigyear_user', userKey);
+        rememberSignedInUser(userKey);
         document.getElementById('login-username').value = '';
         document.getElementById('login-password').value = '';
         showPage('home');
@@ -1695,7 +1734,7 @@ window.handleSetPassword = async function() {
     invalidateUserCache();
     currentUser = pendingNewUser.key;
     allUsersCache[currentUser] = { ...userData, display: pendingNewUser.display };
-    sessionStorage.setItem('bigyear_user', currentUser);
+    rememberSignedInUser(currentUser);
     pendingNewUser = null;
     document.getElementById('setpw-new').value = '';
     document.getElementById('setpw-confirm').value = '';
@@ -1711,7 +1750,7 @@ window.handleLogout = function() {
   if (msgUnsubscribe) { msgUnsubscribe(); msgUnsubscribe = null; }
   stopBirdListeners();
   currentUser = null;
-  sessionStorage.removeItem('bigyear_user');
+  forgetSignedInUser();
   showPage('login');
 }
 
@@ -2140,7 +2179,7 @@ window.saveUsername = async function() {
     // Update session
     const oldKey = currentUser;
     currentUser = newKey;
-    sessionStorage.setItem('bigyear_user', newKey);
+    rememberSignedInUser(newKey);
     allUsersCache[newKey] = { ...userData };
     delete allUsersCache[oldKey];
 
@@ -4660,7 +4699,7 @@ function checklistDetailHTML(list) {
       }
     } catch(e) { console.error(e); }
     currentUser = null;
-    sessionStorage.removeItem('bigyear_user');
+    forgetSignedInUser();
   }
 
   hideLoading();
