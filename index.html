@@ -1405,9 +1405,13 @@ function avatarHTML(userKey, display, cls, extra) {
 const WIKI_THUMB_WIDTHS = [120, 250, 330, 500];
 
 function avatarSizedUrl(url, px) {
+  const str = String(url || '');
+  // Only Wikimedia publishes these fixed widths. A pasted link from anywhere
+  // else is left exactly as it came — rewriting a number in someone else's URL
+  // would at best do nothing and at worst point at a file that isn't there.
+  if (!/^https:\/\/upload\.wikimedia\.org\//i.test(str)) return str;
   const want = WIKI_THUMB_WIDTHS.find(w => w >= px);
-  // No usable size, or not a Wikimedia thumb URL: leave it exactly as it came.
-  return want ? String(url || '').replace(/\/\d+px-/, '/' + want + 'px-') : String(url || '');
+  return want ? str.replace(/\/\d+px-/, '/' + want + 'px-') : str;
 }
 
 // If a photo fails to load anyway, fall back to initials rather than leaving
@@ -1747,6 +1751,34 @@ async function renderMyProfile() {
 // calls Wikipedia, which would mean an API request per avatar per page view.
 let avatarPick = null; // { species, url }
 let avatarPos = { ox: 0, oy: 0, zoom: 1.2, aspect: 0 }; // offset from centred, in percent
+let avatarPreviewUrl = '';   // what the current framing belongs to
+
+// A pasted link is anything that parses as an http(s) URL. Other schemes are
+// refused: data: URLs would blow past the size a user document can hold, and
+// nothing else belongs in an image source.
+function parseImageUrl(value) {
+  const str = String(value || '').trim();
+  if (str.length > 2000) return null;
+  try {
+    const u = new URL(str);
+    return (u.protocol === 'https:' || u.protocol === 'http:') ? u.href : null;
+  } catch(e) { return null; }
+}
+
+// Resolves to the image's real dimensions, or null if it never loads. This is
+// what actually gates saving: a link is only accepted once the browser has
+// fetched it and found a picture, so nobody can save a dead URL.
+function measureImage(url) {
+  return new Promise(resolve => {
+    const img = new Image();
+    let settled = false;
+    const done = value => { if (!settled) { settled = true; resolve(value); } };
+    img.onload  = () => done(img.naturalWidth > 0 ? { w: img.naturalWidth, h: img.naturalHeight } : null);
+    img.onerror = () => done(null);
+    setTimeout(() => done(null), 10000);   // slow or hanging host
+    img.src = url;
+  });
+}
 
 window.openAvatarPicker = function() {
   avatarPick = null;
@@ -1756,18 +1788,18 @@ window.openAvatarPicker = function() {
   showModal(`
     <div class="modal-title">Choose your profile bird</div>
     <div class="modal-body">
-      Pick any bird — its photo from Wikipedia becomes your picture.
+      Name a bird to use its photo from Wikipedia, or paste a link to any image.
       <div style="position:relative;margin-top:0.75rem;">
         <input id="avatar-bird-input" class="form-input" type="text" autocomplete="off"
-               placeholder="e.g. Northern Cardinal"
-               value="${esc(current.avatarBird || '')}"
-               oninput="filterSuggestions('avatar-bird-input','avatar-bird-suggestions')"
+               placeholder="Northern Cardinal — or paste an image link"
+               value="${esc(current.avatarBird || current.avatarUrl || '')}"
+               oninput="window.avatarInputChanged()"
                onchange="window.previewAvatarBird()"
                onkeydown="suggestionKeydown(event,'avatar-bird-input','avatar-bird-suggestions')">
         <div id="avatar-bird-suggestions" class="suggestions-dropdown"></div>
       </div>
       <div class="avatar-preview" id="avatar-preview">
-        <div class="avatar-preview-hint">Start typing a bird name.</div>
+        <div class="avatar-preview-hint">Type a bird name, or paste an image link.</div>
       </div>
     </div>
     <div class="modal-actions" style="display:flex;gap:0.5rem;justify-content:flex-end;">
@@ -1776,7 +1808,22 @@ window.openAvatarPicker = function() {
       <button class="btn-add-bird" id="avatar-save-btn" disabled onclick="window.saveAvatarBird()">Use this photo</button>
     </div>
   `);
-  if (current.avatarBird) window.previewAvatarBird();
+  avatarPreviewUrl = '';
+  if (current.avatarBird || current.avatarUrl) window.previewAvatarBird();
+}
+
+// Species suggestions would be noise once someone starts pasting a URL, and a
+// long link scrolling through a dropdown of bird names looks broken.
+window.avatarInputChanged = function() {
+  const input = document.getElementById('avatar-bird-input');
+  const box = document.getElementById('avatar-bird-suggestions');
+  if (!input) return;
+  if (parseImageUrl(input.value)) {
+    if (box) { box.classList.remove('open'); box.innerHTML = ''; }
+    window.previewAvatarBird();   // a pasted link needs no Enter or blur
+    return;
+  }
+  filterSuggestions('avatar-bird-input', 'avatar-bird-suggestions');
 }
 
 window.previewAvatarBird = async function() {
@@ -1784,37 +1831,91 @@ window.previewAvatarBird = async function() {
   const box = document.getElementById('avatar-preview');
   const saveBtn = document.getElementById('avatar-save-btn');
   if (!input || !box) return;
-  const species = input.value.trim();
+  const value = input.value.trim();
   avatarPick = null;
   if (saveBtn) saveBtn.disabled = true;
-  if (!species) { box.innerHTML = '<div class="avatar-preview-hint">Start typing a bird name.</div>'; return; }
 
-  box.innerHTML = '<div class="avatar-preview-hint">Looking up a photo…</div>';
-  const result = await fetchBirdImage(species);
-  // The picker may have moved on (or closed) while the lookup was in flight.
-  const live = document.getElementById('avatar-bird-input');
-  if (!live || live.value.trim() !== species) return;
+  const hint = msg => { box.innerHTML = `<div class="avatar-preview-hint">${msg}</div>`; };
+  // The field may have moved on (or the modal closed) while a lookup was in
+  // flight — everything below re-checks before touching the DOM.
+  const stale = () => {
+    const live = document.getElementById('avatar-bird-input');
+    return !live || live.value.trim() !== value;
+  };
 
-  // The lookup falls back to a Wikipedia search, which will happily return
-  // something unrelated for a name that isn't a bird (a made-up name once
-  // came back as a Batman article). A throwaway popup can shrug that off; a
-  // permanent profile picture shouldn't, so require the article it landed on
-  // to actually share a word with what was typed, and require a /thumb/ URL
-  // so we know it's a resizable thumbnail rather than a full-size original.
-  const pageTitle = decodeURIComponent(String(result && result.url || '').split('/').pop() || '')
-    .replace(/_/g, ' ').toLowerCase();
-  const typedWords = species.toLowerCase().match(/[a-z]{4,}/g) || [];
-  const plausible = !pageTitle || typedWords.some(w => pageTitle.includes(w));
-  const isThumb = String(result && result.img || '').includes('/thumb/');
+  if (!value) { hint('Type a bird name, or paste an image link.'); return; }
 
-  if (result && result.img && plausible && isThumb) {
-    const url = avatarSizedUrl(result.img, 250);
+  const pasted = parseImageUrl(value);
+
+  // Something clearly meant as a link but not usable as one — a data: URI, a
+  // typo'd scheme, a copied file path. Searching Wikipedia for it would return
+  // an article about the word rather than telling the person what went wrong.
+  if (!pasted && /^[a-z][a-z0-9+.-]*:/i.test(value)) {
+    hint('That isn&rsquo;t an image link.<br>It needs to start with http:// or https://');
+    return;
+  }
+
+  hint(pasted ? 'Loading that image…' : 'Looking up a photo…');
+
+  let url = null, label = '';
+
+  if (pasted) {
+    url = pasted;
+    label = 'Your own image';
+  } else {
+    const result = await fetchBirdImage(value);
+    if (stale()) return;
+
+    // The lookup falls back to a Wikipedia search, which will happily return
+    // something unrelated for a name that isn't a bird (a made-up name once
+    // came back as a Batman article). A throwaway popup can shrug that off; a
+    // permanent profile picture shouldn't, so require the article it landed on
+    // to actually share a word with what was typed, and require a /thumb/ URL
+    // so we know it's a resizable thumbnail rather than a full-size original.
+    const pageTitle = decodeURIComponent(String(result && result.url || '').split('/').pop() || '')
+      .replace(/_/g, ' ').toLowerCase();
+    const typedWords = value.toLowerCase().match(/[a-z]{4,}/g) || [];
+    const plausible = !pageTitle || typedWords.some(w => pageTitle.includes(w));
+    const isThumb = String(result && result.img || '').includes('/thumb/');
+    if (result && result.img && plausible && isThumb) {
+      url = avatarSizedUrl(result.img, 250);
+      label = value;
+    }
+  }
+
+  if (!url) {
+    hint(`No bird photo found for &ldquo;${esc(value)}&rdquo;.<br>Check the spelling, or paste a link to an image.`);
+    return;
+  }
+
+  // Nothing is offered for saving until the browser has actually fetched the
+  // image — which also hands us the proportions the framing needs.
+  const dims = await measureImage(url);
+  if (stale()) return;
+  if (!dims) {
+    hint(pasted
+      ? 'That link didn&rsquo;t load as an image.<br>Open it in a tab — you want the address of the picture itself.'
+      : 'That photo could not be loaded. Try another bird.');
+    return;
+  }
+
+  // A different picture gets fresh framing; re-previewing the same one keeps
+  // whatever the person has already set up.
+  if (url !== avatarPreviewUrl) {
+    avatarPreviewUrl = url;
+    avatarPos.ox = 0; avatarPos.oy = 0;
+    if (!avatarPos.zoom || avatarPos.zoom < 0.2) avatarPos.zoom = 1.2;
+  }
+  avatarPos.aspect = dims.w / dims.h;
+
+  {
+    const species = pasted ? '' : value;
     avatarPick = { species, url };
     box.innerHTML = `
       <div class="avatar-preview-circle" id="avatar-preview-circle">
-        <img id="avatar-preview-img" class="avatar-img" src="${esc(url)}" alt="${esc(species)}" draggable="false">
+        <img id="avatar-preview-img" class="avatar-img" src="${esc(url)}" alt="${esc(label)}" draggable="false">
       </div>
-      <div class="avatar-preview-name">${esc(species)}</div>
+      <div class="avatar-preview-name">${esc(label)}</div>
       <div class="avatar-zoom">
         <span>Zoom</span>
         <input type="range" id="avatar-zoom" min="0.4" max="2" step="0.01" value="${avatarPos.zoom}"
@@ -1824,21 +1925,11 @@ window.previewAvatarBird = async function() {
       </div>
       <div class="avatar-preview-hint" style="margin:0;">Drag the photo to frame it</div>`;
 
-    // The photo's own proportions decide how much room there is to pan, so read
-    // them off the loaded image before drawing the frame.
-    const img = document.getElementById('avatar-preview-img');
-    const applyOnce = () => {
-      if (!avatarPos.aspect && img.naturalWidth && img.naturalHeight) {
-        avatarPos.aspect = img.naturalWidth / img.naturalHeight;
-      }
-      applyAvatarFrame();
-    };
-    if (img.complete && img.naturalWidth) applyOnce();
-    else img.addEventListener('load', applyOnce, { once: true });
+    // Proportions are already known from measureImage(), so the frame can be
+    // drawn immediately instead of waiting on a load event.
+    applyAvatarFrame();
     bindAvatarDrag();
-    if (document.getElementById('avatar-save-btn')) document.getElementById('avatar-save-btn').disabled = false;
-  } else {
-    box.innerHTML = `<div class="avatar-preview-hint">No bird photo found for &ldquo;${esc(species)}&rdquo;.<br>Check the spelling, or try another bird.</div>`;
+    if (saveBtn) saveBtn.disabled = false;
   }
 }
 
