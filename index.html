@@ -304,8 +304,25 @@
 
   /* REACTIONS */
   .reactions { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.6rem; }
-  .reaction-chip { display: inline-flex; align-items: center; gap: 0.25rem; background: rgba(245,237,214,0.05); border: 1px solid rgba(200,149,42,0.2); border-radius: 999px; padding: 0.2rem 0.55rem; min-height: 30px; color: rgba(245,237,214,0.7); font-family: 'Source Sans 3', sans-serif; font-size: 0.8rem; line-height: 1; cursor: pointer; transition: all 0.12s; }
+  .reaction-chip { position: relative; display: inline-flex; align-items: center; gap: 0.25rem; background: rgba(245,237,214,0.05); border: 1px solid rgba(200,149,42,0.2); border-radius: 999px; padding: 0.2rem 0.55rem; min-height: 30px; color: rgba(245,237,214,0.7); font-family: 'Source Sans 3', sans-serif; font-size: 0.8rem; line-height: 1; cursor: pointer; transition: all 0.12s; }
   .reaction-chip:hover { border-color: rgba(200,149,42,0.5); background: rgba(200,149,42,0.1); }
+  /* Names on hover. Guarded by (hover: hover) so a phone — where a tap counts
+     as a hover — can't leave one stuck open; touch gets press-and-hold instead. */
+  .reaction-chip::after {
+    content: attr(data-who);
+    position: absolute; bottom: calc(100% + 7px); left: 50%; transform: translateX(-50%);
+    background: #16241a; border: 1px solid rgba(200,149,42,0.45); border-radius: 4px;
+    padding: 0.3rem 0.55rem; width: max-content; max-width: 190px;
+    font-size: 0.72rem; line-height: 1.35; color: var(--cream); text-align: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.12s; z-index: 60;
+  }
+  @media (hover: hover) { .reaction-chip:hover::after { opacity: 1; } }
+  .reaction-chip.pressing { background: rgba(200,149,42,0.25); }
+  .who-reacted-row { display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.5rem 0; border-bottom: 1px solid rgba(200,149,42,0.12); }
+  .who-reacted-row:last-child { border-bottom: none; }
+  .who-reacted-emoji { font-size: 1.15rem; line-height: 1.3; flex-shrink: 0; }
+  .who-reacted-names { font-size: 0.85rem; color: rgba(245,237,214,0.8); }
+  .who-reacted-label { font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(200,149,42,0.6); }
   .reaction-chip.mine { background: rgba(200,149,42,0.18); border-color: var(--gold); color: var(--pale-gold); }
   .reaction-chip .rc-emoji { font-size: 0.95rem; }
   .reaction-chip .rc-count { font-variant-numeric: tabular-nums; }
@@ -2668,10 +2685,18 @@ function csvCell(val) {
 // the panel clears it until the next entry appears.
 const APP_UPDATES = [
   {
+    at: '2026-08-29 18:29',
+    title: 'See who reacted, and a new reaction',
+    items: [
+      'Hover a reaction on a laptop, or press and hold it on a phone, to see who left it. Holding never changes your own reaction — a normal tap still does that.',
+      '🤨 <b>Yeah right</b> replaces 🤩 Amazing, for when somebody’s rarity needs a second look.',
+    ],
+  },
+  {
     at: '2026-08-29 14:12',
     title: 'React to sightings',
     items: [
-      'On the Activity tab, tap the <b>+</b> under any bird to add an emoji — 👍 ❤️ 🔥 👏 😮 🤩 🏆 👀. Tap a reaction again to take it back, and hover one to see who reacted.',
+      'On the Activity tab, tap the <b>+</b> under any bird to add an emoji — 👍 ❤️ 🔥 👏 😮 🤨 🏆 👀. Tap a reaction again to take it back, and hover one to see who reacted.',
     ],
   },
   {
@@ -4007,7 +4032,7 @@ const REACTIONS = [
   { id: 'fire',    emoji: '🔥', label: 'Fire' },
   { id: 'clap',    emoji: '👏', label: 'Bravo' },
   { id: 'wow',     emoji: '😮', label: 'Wow' },
-  { id: 'amazed',  emoji: '🤩', label: 'Amazing' },
+  { id: 'doubt',   emoji: '🤨', label: 'Yeah right' },
   { id: 'trophy',  emoji: '🏆', label: 'Trophy' },
   { id: 'jealous', emoji: '👀', label: 'Jealous' },
 ];
@@ -4073,8 +4098,11 @@ function reactionsHTML(it) {
   const chips = used.map(({ r, keys }) => {
     const mine = keys.includes(currentUser);
     const who = reactionNames(keys);
+    // data-who feeds the hover tooltip; the data-* ids feed press-and-hold.
+    // No title attribute — it would show a second, native tooltip underneath.
     return `<button type="button" class="reaction-chip${mine ? ' mine' : ''}"
-      title="${esc(who)}"${canReact() ? ` onclick="window.toggleReaction('${jsArg(it.key)}','${jsArg(it.id)}','${r.id}')"` : ' disabled'}>
+      data-who="${esc(who)}" data-user="${esc(it.key)}" data-bird="${esc(it.id)}"
+      ${canReact() ? `onclick="window.toggleReaction('${jsArg(it.key)}','${jsArg(it.id)}','${r.id}')"` : 'disabled'}>
       <span class="rc-emoji">${r.emoji}</span><span class="rc-count">${keys.length}</span></button>`;
   }).join('');
 
@@ -4085,6 +4113,78 @@ function reactionsHTML(it) {
 
   return (chips || add) ? `<div class="reactions">${chips}${add}</div>` : '';
 }
+
+// Everyone who reacted to one sighting, grouped by reaction. Opened by
+// pressing and holding a chip — hovering shows the same names on devices that
+// can hover, but a phone has no hover to offer.
+window.showReactionRoster = function(userKey, birdId) {
+  const bird = (birdsByUser[userKey] || []).find(b => b.id === birdId);
+  const used = REACTIONS
+    .map(r => ({ r, keys: (bird && bird.reactions && bird.reactions[r.id]) || [] }))
+    .filter(x => x.keys.length);
+  if (!used.length) return;
+
+  showModal(`
+    <div class="modal-title">Who reacted</div>
+    <div class="modal-body">
+      <div class="who-reacted-label">${esc(bird ? bird.species : '')}</div>
+      ${used.map(({ r, keys }) => `
+        <div class="who-reacted-row">
+          <span class="who-reacted-emoji">${r.emoji}</span>
+          <span class="who-reacted-names">${esc(reactionNames(keys))}</span>
+        </div>`).join('')}
+    </div>
+    <div class="modal-actions"><button class="btn-logout" onclick="closeModal()">Close</button></div>
+  `);
+}
+
+// Press and hold a chip to see the names instead of toggling it. Bound once,
+// by delegation, because the feed re-renders on every snapshot.
+//
+// The leading semicolon matters: the assignment above ends without one (the
+// file's style), and an IIFE on the next line would otherwise be parsed as
+// calling its result rather than as its own statement.
+;(function bindReactionHold() {
+  const HOLD_MS = 450, SLOP = 8;
+  let timer = null, held = false, chip = null, x0 = 0, y0 = 0;
+
+  const stop = () => {
+    if (timer) { clearTimeout(timer); timer = null; }
+    if (chip) { chip.classList.remove('pressing'); chip = null; }
+  };
+
+  document.addEventListener('pointerdown', e => {
+    const target = e.target.closest && e.target.closest('.reaction-chip');
+    if (!target) return;
+    stop();
+    held = false; chip = target; x0 = e.clientX; y0 = e.clientY;
+    chip.classList.add('pressing');
+    timer = setTimeout(() => {
+      held = true;
+      const el = chip;
+      stop();
+      window.showReactionRoster(el.dataset.user, el.dataset.bird);
+    }, HOLD_MS);
+  });
+
+  // A drag means they're scrolling the feed, not holding the chip.
+  document.addEventListener('pointermove', e => {
+    if (timer && (Math.abs(e.clientX - x0) > SLOP || Math.abs(e.clientY - y0) > SLOP)) stop();
+  });
+  document.addEventListener('pointerup', stop);
+  document.addEventListener('pointercancel', stop);
+
+  // Swallow the click that follows a hold, so seeing the names doesn't also
+  // toggle the reaction. Capture phase, to get in before the inline onclick.
+  document.addEventListener('click', e => {
+    if (!held) return;
+    held = false;
+    if (e.target.closest && e.target.closest('.reaction-chip')) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
+})();
 
 // ── BIRDS NEAR YOU ─────────────────────────────────────────────────────────
 // Shows every species the family has logged within a radius of a chosen
