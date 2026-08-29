@@ -302,6 +302,21 @@
   .update-list li { font-size: 0.86rem; color: rgba(245,237,214,0.75); line-height: 1.5; margin-bottom: 0.35rem; }
   .update-list li b { color: var(--cream); font-weight: 600; }
 
+  /* REACTIONS */
+  .reactions { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.6rem; }
+  .reaction-chip { display: inline-flex; align-items: center; gap: 0.25rem; background: rgba(245,237,214,0.05); border: 1px solid rgba(200,149,42,0.2); border-radius: 999px; padding: 0.2rem 0.55rem; min-height: 30px; color: rgba(245,237,214,0.7); font-family: 'Source Sans 3', sans-serif; font-size: 0.8rem; line-height: 1; cursor: pointer; transition: all 0.12s; }
+  .reaction-chip:hover { border-color: rgba(200,149,42,0.5); background: rgba(200,149,42,0.1); }
+  .reaction-chip.mine { background: rgba(200,149,42,0.18); border-color: var(--gold); color: var(--pale-gold); }
+  .reaction-chip .rc-emoji { font-size: 0.95rem; }
+  .reaction-chip .rc-count { font-variant-numeric: tabular-nums; }
+  .reaction-add { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; background: none; border: 1px dashed rgba(200,149,42,0.3); border-radius: 999px; color: rgba(200,149,42,0.6); font-size: 0.95rem; line-height: 1; cursor: pointer; transition: all 0.12s; }
+  .reaction-add:hover { border-style: solid; border-color: var(--gold); color: var(--gold); background: rgba(200,149,42,0.1); }
+  .reaction-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+  .reaction-pick { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.2rem; background: rgba(245,237,214,0.05); border: 1px solid rgba(200,149,42,0.25); border-radius: var(--radius); padding: 0.6rem 0.2rem; min-height: 58px; color: rgba(245,237,214,0.55); font-family: 'Source Sans 3', sans-serif; font-size: 0.62rem; cursor: pointer; transition: all 0.12s; }
+  .reaction-pick:hover { background: rgba(200,149,42,0.14); border-color: var(--gold); }
+  .reaction-pick.mine { background: rgba(200,149,42,0.2); border-color: var(--gold); color: var(--pale-gold); }
+  .reaction-pick .rp-emoji { font-size: 1.5rem; line-height: 1; }
+
   /* MESSAGES */
   .post-input-area { background: rgba(245,237,214,0.04); border: 1px solid rgba(200,149,42,0.25); border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem; }
   .post-textarea { width: 100%; background: transparent; border: none; color: var(--cream); font-family: 'Source Sans 3', sans-serif; font-size: 16px; resize: none; outline: none; min-height: 60px; }
@@ -1176,7 +1191,8 @@ import {
   getFirestore, collection, doc, getDoc,
   setDoc as _fsSetDoc, addDoc as _fsAddDoc, deleteDoc as _fsDeleteDoc,
   updateDoc as _fsUpdateDoc,
-  query, orderBy, onSnapshot, getDocs, serverTimestamp
+  query, orderBy, onSnapshot, getDocs, serverTimestamp,
+  arrayUnion, arrayRemove
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -2651,10 +2667,11 @@ function csvCell(val) {
 const APP_UPDATES = [
   {
     date: '2026-08-29',
-    title: 'Checklists, profile pictures, and a shorter menu',
+    title: 'Checklists, profile pictures, reactions, and a shorter menu',
     items: [
       '<b>New Checklists tab.</b> Northeast Ohio\'s birds sorted into groups — owls, warblers, ducks, woodpeckers — plus by season and by difficulty. Switch between <b>Just me</b> and <b>Whole family</b> to see whether we\'ve finished a list together, and filter to the easy birds to see how you\'re doing on those alone.',
       '<b>Profile pictures.</b> My Profile → Choose profile bird. Name any bird to use its photo, or paste a link to your own image, then drag and zoom to frame it inside the circle.',
+      '<b>React to sightings.</b> On the Activity tab, tap the <b>+</b> under any bird to add an emoji — 👍 ❤️ 🔥 👏 😮 🤩 🏆 👀. Tap a reaction again to take it back, and hover one to see who reacted.',
       '<b>Countdown moved onto the Board</b> instead of having its own tab.',
       '<b>Shared with you is now a button on My Birds</b>, with a badge when someone has sent you something.',
       '<b>My Profile is now the round icon</b> next to Sign out — and it shows your bird once you pick one.',
@@ -3831,6 +3848,8 @@ window.setActivityFinderFilter = function(tier) {
 function rebuildActivityItems() {
   activityItems = flattenSightings(birdsByUser).map(b => ({
     key: b.key,
+    id: b.id,                       // needed to write a reaction back
+    reactions: b.reactions || null,
     display: b.display,
     realName: b.realName,
     species: b.species,
@@ -3943,6 +3962,7 @@ window.renderActivityCards = function(keepPaging) {
           ${it.location ? `<br><span class="bird-location">📍 ${esc(it.location)}</span>` : ''}
           ${it.note ? `<br><span class="bird-note">${esc(it.note)}</span>` : ''}
         </div>
+        ${reactionsHTML(it)}
       </div>`;
   }).join('') + (hidden ? `
     <div class="activity-more">
@@ -3953,6 +3973,102 @@ window.renderActivityCards = function(keepPaging) {
     </div>` : '');
 }
 
+
+// ── REACTIONS ──────────────────────────────────────────────────────────────
+// Stored on the sighting itself as { reactions: { like: [userKey, …] } }.
+// Keyed by a plain ASCII id rather than the emoji character, so the emoji can
+// be changed later without migrating anyone's data, and so the Firestore field
+// path stays simple.
+//
+// Writes use arrayUnion/arrayRemove, which are applied by the server rather
+// than read-modify-written here — two people reacting at the same instant both
+// land instead of one overwriting the other. The bird listeners stream the
+// change to everyone, and Firestore applies your own write locally before the
+// server confirms, so your tap registers immediately.
+const REACTIONS = [
+  { id: 'like',    emoji: '👍', label: 'Nice' },
+  { id: 'love',    emoji: '❤️', label: 'Love' },
+  { id: 'fire',    emoji: '🔥', label: 'Fire' },
+  { id: 'clap',    emoji: '👏', label: 'Bravo' },
+  { id: 'wow',     emoji: '😮', label: 'Wow' },
+  { id: 'amazed',  emoji: '🤩', label: 'Amazing' },
+  { id: 'trophy',  emoji: '🏆', label: 'Trophy' },
+  { id: 'jealous', emoji: '👀', label: 'Jealous' },
+];
+
+function reactionById(id) { return REACTIONS.find(r => r.id === id); }
+
+// Who reacted, by display name, for the chip's tooltip.
+function reactionNames(keys) {
+  return (keys || []).map(k => (allUsersCache[k] || {}).display || k).join(', ');
+}
+
+function canReact() { return currentUser && currentUser !== '__admin__'; }
+
+// Reads through the live bird data rather than trusting what was rendered, so
+// a stale card can't flip the wrong way.
+function myReaction(userKey, birdId, rid) {
+  const bird = (birdsByUser[userKey] || []).find(b => b.id === birdId);
+  return ((bird && bird.reactions && bird.reactions[rid]) || []).includes(currentUser);
+}
+
+window.toggleReaction = async function(userKey, birdId, rid) {
+  if (!canReact() || !reactionById(rid)) return;
+  const mine = myReaction(userKey, birdId, rid);
+  try {
+    await updateDoc(doc(db, 'users', userKey, 'birds', birdId), {
+      ['reactions.' + rid]: mine ? arrayRemove(currentUser) : arrayUnion(currentUser)
+    });
+  } catch(e) {
+    console.error('toggleReaction', e);
+  }
+}
+
+window.openReactionPicker = function(userKey, birdId, species) {
+  if (!canReact()) return;
+  showModal(`
+    <div class="modal-title">React to ${esc(species)}</div>
+    <div class="modal-body">
+      <div class="reaction-grid">
+        ${REACTIONS.map(r => `
+          <button type="button" class="reaction-pick${myReaction(userKey, birdId, r.id) ? ' mine' : ''}"
+                  onclick="window.pickReaction('${jsArg(userKey)}','${jsArg(birdId)}','${r.id}')">
+            <span class="rp-emoji">${r.emoji}</span>${esc(r.label)}
+          </button>`).join('')}
+      </div>
+    </div>
+    <div class="modal-actions"><button class="btn-logout" onclick="closeModal()">Done</button></div>
+  `);
+}
+
+window.pickReaction = async function(userKey, birdId, rid) {
+  closeModal();
+  await window.toggleReaction(userKey, birdId, rid);
+}
+
+// The chip row under a sighting. Only reactions somebody has actually used are
+// shown, so a quiet card stays quiet.
+function reactionsHTML(it) {
+  if (!it.id) return '';   // nothing to write to
+  const used = REACTIONS
+    .map(r => ({ r, keys: (it.reactions && it.reactions[r.id]) || [] }))
+    .filter(x => x.keys.length);
+
+  const chips = used.map(({ r, keys }) => {
+    const mine = keys.includes(currentUser);
+    const who = reactionNames(keys);
+    return `<button type="button" class="reaction-chip${mine ? ' mine' : ''}"
+      title="${esc(who)}"${canReact() ? ` onclick="window.toggleReaction('${jsArg(it.key)}','${jsArg(it.id)}','${r.id}')"` : ' disabled'}>
+      <span class="rc-emoji">${r.emoji}</span><span class="rc-count">${keys.length}</span></button>`;
+  }).join('');
+
+  const add = canReact()
+    ? `<button type="button" class="reaction-add" title="Add a reaction"
+         onclick="window.openReactionPicker('${jsArg(it.key)}','${jsArg(it.id)}','${jsArg(it.species)}')">+</button>`
+    : '';
+
+  return (chips || add) ? `<div class="reactions">${chips}${add}</div>` : '';
+}
 
 // ── BIRDS NEAR YOU ─────────────────────────────────────────────────────────
 // Shows every species the family has logged within a radius of a chosen
